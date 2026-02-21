@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DeliveryApp.Api/DeliveryApp.Api.csproj" />
+    <Project Path="src/DeliveryApp.Application/DeliveryApp.Application.csproj" />
+    <Project Path="src/DeliveryApp.Domain/DeliveryApp.Domain.csproj" />
+    <Project Path="src/DeliveryApp.Infrastructure/DeliveryApp.Infrastructure.csproj" />
+    <Project Path="src/DeliveryApp.Service/DeliveryApp.Service.csproj" />
+  </Folder>
+</Solution>

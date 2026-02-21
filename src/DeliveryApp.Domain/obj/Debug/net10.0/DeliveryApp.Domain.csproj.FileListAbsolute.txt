@@ -1,0 +1,11 @@
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\bin\Debug\net10.0\DeliveryApp.Domain.deps.json
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\bin\Debug\net10.0\DeliveryApp.Domain.dll
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\bin\Debug\net10.0\DeliveryApp.Domain.pdb
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.AssemblyInfoInputs.cache
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.AssemblyInfo.cs
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.csproj.CoreCompileInputs.cache
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.dll
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\refint\DeliveryApp.Domain.dll
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\DeliveryApp.Domain.pdb
+C:\Github\DeliveryApp\src\DeliveryApp.Domain\obj\Debug\net10.0\ref\DeliveryApp.Domain.dll
