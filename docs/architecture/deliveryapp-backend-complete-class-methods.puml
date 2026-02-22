@@ -35,7 +35,9 @@ package "Application.Common" {
     +Success(value: T): ServiceResult<T>
     +Failure(code: string, message: string, statusCode: int): ServiceResult<T>
   }
+}
 
+package "Application.Validation" {
   class OrderValidator
   class PaymentValidator
   class CustomerValidator
