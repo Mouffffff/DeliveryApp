@@ -37,12 +37,6 @@ namespace DeliveryApp.Infrastructure.Data.Migrations
                     b.Property<int?>("CustomerId")
                         .HasColumnType("int");
 
-                    b.Property<double>("Latitude")
-                        .HasColumnType("float");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("float");
-
                     b.Property<string>("Street")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -146,11 +140,7 @@ namespace DeliveryApp.Infrastructure.Data.Migrations
 
                     b.HasIndex("CourierId");
 
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("DeliveryAddressId");
-
-                    b.HasIndex("StoreId");
 
                     b.ToTable("Orders", (string)null);
                 });
@@ -303,21 +293,9 @@ namespace DeliveryApp.Infrastructure.Data.Migrations
                         .WithMany("Orders")
                         .HasForeignKey("CourierId");
 
-                    b.HasOne("DeliveryApp.Domain.Entities.Customer", null)
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("DeliveryApp.Domain.Entities.Address", "DeliveryAddress")
                         .WithMany()
                         .HasForeignKey("DeliveryAddressId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("DeliveryApp.Domain.Entities.Store", null)
-                        .WithMany()
-                        .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

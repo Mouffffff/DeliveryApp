@@ -1,0 +1,140 @@
+@startuml
+title DeliveryApp - Target Modular Monolith UML
+left to right direction
+skinparam packageStyle rectangle
+
+package "API Layer" {
+  class "DeliveryApp.Api" as Api
+}
+
+package "BuildingBlocks" {
+  package "DeliveryApp.BuildingBlocks.Domain" as Bbd {
+    class Entity
+    interface IDomainEvent
+  }
+
+  package "DeliveryApp.BuildingBlocks.Application" as Bba {
+    class "Result<T>" as ResultT
+    interface ICommand
+    interface IQuery
+    interface ICommandHandler
+    interface IQueryHandler
+  }
+
+  package "DeliveryApp.BuildingBlocks.Infrastructure" as Bbi {
+    interface IUnitOfWork
+  }
+}
+
+package "Catalog Module" {
+  package "Catalog.Domain" as CatD {
+    class Store
+    class Product
+  }
+  package "Catalog.Application" as CatA {
+    interface ICatalogQueries
+    interface ICatalogService
+  }
+  class "Catalog.Infrastructure" as CatI
+}
+
+package "Ordering Module" {
+  package "Ordering.Domain" as OrdD {
+    class Order
+    class OrderItem
+    enum OrderStatus
+  }
+  package "Ordering.Application" as OrdA {
+    interface IOrderingService
+    interface IOrderService
+  }
+  class "Ordering.Infrastructure" as OrdI
+}
+
+package "Dispatch Module" {
+  package "Dispatch.Domain" as DisD {
+    class Courier
+    class DeliveryAssignment
+    enum VehicleType
+  }
+  package "Dispatch.Application" as DisA {
+    interface IDispatchService
+    interface ICourierService
+  }
+  class "Dispatch.Infrastructure" as DisI
+}
+
+package "Payments Module" {
+  package "Payments.Domain" as PayD {
+    class Payment
+    enum PaymentMethod
+    enum PaymentStatus
+  }
+  package "Payments.Application" as PayA {
+    interface IPaymentService
+    interface IPaymentAppService
+    interface IReviewService
+  }
+  class "Payments.Infrastructure" as PayI
+}
+
+package "Identity Module" {
+  package "Identity.Domain" as IdD {
+    class UserAccount
+    enum AppRole
+  }
+  package "Identity.Application" as IdA {
+    interface IIdentityService
+  }
+  class "Identity.Infrastructure" as IdI
+}
+
+Api --> ICatalogQueries
+Api --> IOrderingService
+Api --> IDispatchService
+Api --> IPaymentService
+Api --> IIdentityService
+Api --> ICatalogService
+Api --> IOrderService
+Api --> ICourierService
+Api --> IPaymentAppService
+Api --> IReviewService
+
+CatI ..> ICatalogQueries
+OrdI ..> IOrderingService
+DisI ..> IDispatchService
+PayI ..> IPaymentService
+IdI ..> IIdentityService
+CatI ..> ICatalogService
+OrdI ..> IOrderService
+DisI ..> ICourierService
+PayI ..> IPaymentAppService
+PayI ..> IReviewService
+
+Store --|> Entity
+Product --|> Entity
+Order --|> Entity
+OrderItem --|> Entity
+Courier --|> Entity
+DeliveryAssignment --|> Entity
+Payment --|> Entity
+UserAccount --|> Entity
+
+ICatalogQueries ..> ResultT
+IOrderingService ..> ResultT
+IDispatchService ..> ResultT
+IPaymentService ..> ResultT
+IIdentityService ..> ResultT
+ICatalogService ..> ResultT
+IOrderService ..> ResultT
+ICourierService ..> ResultT
+IPaymentAppService ..> ResultT
+IReviewService ..> ResultT
+
+CatI ..> IUnitOfWork
+OrdI ..> IUnitOfWork
+DisI ..> IUnitOfWork
+PayI ..> IUnitOfWork
+IdI ..> IUnitOfWork
+
+@enduml

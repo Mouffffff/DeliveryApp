@@ -1,0 +1,293 @@
+@startuml
+
+title DeliveryApp - UML Backend Complet (Architecture Actuelle)
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "API" {
+  class DeliveryEndpoints {
+    +MapDeliveryEndpoints(app: WebApplication): void
+    -ToHttpResult<T>(result: ServiceResult<T>): IResult
+  }
+
+  class Program {
+    +Main(args: string[]): void
+  }
+
+  class GlobalExceptionHandler {
+    +TryHandleAsync(httpContext, exception, cancellationToken): ValueTask<bool>
+  }
+}
+
+package "Application.Common" {
+  class ServiceError {
+    +Code: string
+    +Message: string
+    +StatusCode: int
+  }
+
+  class ServiceResult~T~ {
+    +Value: T?
+    +Error: ServiceError?
+    +IsSuccess: bool
+    +Success(value: T): ServiceResult<T>
+    +Failure(code: string, message: string, statusCode: int): ServiceResult<T>
+  }
+
+  class OrderValidator
+  class PaymentValidator
+  class CustomerValidator
+  class CatalogValidator
+  class CourierValidator
+  class ReviewValidator
+}
+
+package "Application - Services" {
+  interface IOrderService {
+    +GetAllAsync(): Task<IReadOnlyList<DeliveryDto>>
+    +GetByIdAsync(id: int): Task<ServiceResult<DeliveryDto>>
+    +GetByStatusAsync(status: int): Task<ServiceResult<IReadOnlyList<DeliveryDto>>>
+    +CreateAsync(dto: CreateDeliveryDto): Task<ServiceResult<DeliveryDto>>
+    +UpdateAsync(id: int, dto: UpdateDeliveryDto): Task<ServiceResult<DeliveryDto>>
+    +DeleteAsync(id: int): Task<ServiceResult<bool>>
+  }
+
+  interface ICatalogService {
+    +GetStoresAsync(): Task<IReadOnlyList<StoreDto>>
+    +GetStoreProductsAsync(storeId: int): Task<ServiceResult<IReadOnlyList<ProductDto>>>
+    +CreateStoreAsync(dto: CreateStoreDto): Task<ServiceResult<StoreDto>>
+    +CreateProductAsync(dto: CreateProductDto): Task<ServiceResult<ProductDto>>
+  }
+
+  interface ICustomerService {
+    +GetCustomersAsync(): Task<IReadOnlyList<CustomerDto>>
+    +GetAddressesAsync(): Task<IReadOnlyList<AddressDto>>
+    +CreateCustomerAsync(dto: CreateCustomerDto): Task<ServiceResult<CustomerDto>>
+    +CreateAddressAsync(dto: CreateAddressDto): Task<ServiceResult<AddressDto>>
+  }
+
+  interface ICourierService {
+    +GetCouriersAsync(): Task<IReadOnlyList<CourierDto>>
+    +GetAvailableCouriersAsync(): Task<IReadOnlyList<CourierDto>>
+    +CreateCourierAsync(dto: CreateCourierDto): Task<ServiceResult<CourierDto>>
+    +AssignCourierAsync(orderId: int, courierId: int): Task<ServiceResult<DeliveryDto>>
+  }
+
+  interface IPaymentAppService {
+    +CreatePaymentAsync(orderId: int, dto: CreatePaymentDto): Task<ServiceResult<PaymentDto>>
+    +GetOrderPaymentsAsync(orderId: int): Task<ServiceResult<IReadOnlyList<PaymentDto>>>
+  }
+
+  interface IReviewService {
+    +CreateOrderReviewAsync(orderId: int, dto: CreateReviewDto): Task<ServiceResult<ReviewDto>>
+    +GetOrderReviewsAsync(orderId: int): Task<ServiceResult<IReadOnlyList<ReviewDto>>>
+  }
+}
+
+package "Application - Repositories" {
+  interface IOrderRepository {
+    +GetAllAsync(): Task<List<Order>>
+    +GetByIdAsync(id: int): Task<Order?>
+    +GetByStatusAsync(status: OrderStatus): Task<List<Order>>
+    +AddAsync(order: Order): Task<Order>
+    +UpdateAsync(order: Order): Task<Order?>
+    +DeleteAsync(id: int): Task<bool>
+  }
+
+  interface ICatalogRepository {
+    +GetProductsByIdsAsync(ids: IReadOnlyCollection<int>): Task<List<Product>>
+    +GetProductsByStoreIdAsync(storeId: int): Task<List<Product>>
+    +GetStoresAsync(): Task<List<Store>>
+    +AddStoreAsync(store: Store): Task<Store>
+    +AddProductAsync(product: Product): Task<Product>
+    +StoreExistsAsync(storeId: int): Task<bool>
+  }
+
+  interface ICustomerRepository {
+    +GetCustomersAsync(): Task<List<Customer>>
+    +GetAddressesAsync(): Task<List<Address>>
+    +AddCustomerAsync(customer: Customer): Task<Customer>
+    +AddAddressAsync(address: Address): Task<Address>
+    +CustomerExistsAsync(customerId: int): Task<bool>
+    +AddressExistsAsync(addressId: int): Task<bool>
+  }
+
+  interface ICourierRepository {
+    +GetCouriersAsync(): Task<List<Courier>>
+    +GetAvailableCouriersAsync(): Task<List<Courier>>
+    +GetCourierByIdAsync(courierId: int): Task<Courier?>
+    +SetCourierAvailabilityAsync(courierId: int, isAvailable: bool): Task
+    +AddCourierAsync(courier: Courier): Task<Courier>
+  }
+
+  interface IPaymentRepository {
+    +GetPaymentsByOrderIdAsync(orderId: int): Task<List<Payment>>
+    +AddPaymentAsync(payment: Payment): Task<Payment>
+  }
+
+  interface IReviewRepository {
+    +AddReviewAsync(review: Review): Task<Review>
+    +GetReviewsByOrderIdAsync(orderId: int): Task<List<Review>>
+    +ReviewExistsForOrderAsync(orderId: int): Task<bool>
+  }
+}
+
+package "Services" {
+  class OrderService
+  class CatalogService
+  class CustomerService
+  class CourierService
+  class PaymentAppService
+  class ReviewService
+  class DeliveryDtoMapper
+}
+
+package "Infrastructure" {
+  class AppDbContext
+  class OrderRepository
+  class CatalogRepository
+  class CustomerRepository
+  class CourierRepository
+  class PaymentRepository
+  class ReviewRepository
+}
+
+package "Modules - Query/Command Abstractions" {
+  interface ICatalogQueries {
+    +GetStoresAsync(cancellationToken): Task<IReadOnlyList<StoreSummary>>
+    +GetProductsAsync(storeId: int, cancellationToken): Task<IReadOnlyList<ProductSummary>>
+  }
+
+  interface IOrderingService {
+    +PlaceOrderAsync(request: PlaceOrderRequest, cancellationToken): Task<Result<OrderDetails>>
+    +GetOrderByIdAsync(orderId: int, cancellationToken): Task<Result<OrderDetails>>
+  }
+
+  interface IDispatchService {
+    +AssignCourierAsync(orderId: int, courierId: int, cancellationToken): Task<Result<AssignmentDetails>>
+    +GetAvailableCouriersAsync(cancellationToken): Task<Result<IReadOnlyList<CourierSummary>>>
+  }
+
+  interface IPaymentService {
+    +PayOrderAsync(request: PayOrderRequest, cancellationToken): Task<Result<PaymentDetails>>
+    +GetOrderPaymentsAsync(orderId: int, cancellationToken): Task<Result<IReadOnlyList<PaymentDetails>>>
+  }
+}
+
+package "Domain" {
+  class Order
+  class OrderItem
+  class Product
+  class Store
+  class Customer
+  class Address
+  class Courier
+  class Payment
+  class Review
+
+  enum OrderStatus
+  enum PaymentMethod
+  enum PaymentStatus
+  enum VehicleType
+}
+
+Program ..> AppDbContext
+Program ..> IOrderRepository
+Program ..> ICatalogRepository
+Program ..> ICustomerRepository
+Program ..> ICourierRepository
+Program ..> IPaymentRepository
+Program ..> IReviewRepository
+Program ..> IOrderService
+Program ..> ICatalogService
+Program ..> ICustomerService
+Program ..> ICourierService
+Program ..> IPaymentAppService
+Program ..> IReviewService
+Program ..> ICatalogQueries
+Program ..> IOrderingService
+Program ..> IDispatchService
+Program ..> IPaymentService
+
+DeliveryEndpoints ..> IOrderService
+DeliveryEndpoints ..> ICatalogService
+DeliveryEndpoints ..> ICustomerService
+DeliveryEndpoints ..> ICourierService
+DeliveryEndpoints ..> IPaymentAppService
+DeliveryEndpoints ..> IReviewService
+DeliveryEndpoints ..> ICatalogQueries
+DeliveryEndpoints ..> IOrderingService
+DeliveryEndpoints ..> IDispatchService
+DeliveryEndpoints ..> IPaymentService
+
+OrderService ..|> IOrderService
+CatalogService ..|> ICatalogService
+CustomerService ..|> ICustomerService
+CourierService ..|> ICourierService
+PaymentAppService ..|> IPaymentAppService
+ReviewService ..|> IReviewService
+
+OrderService ..> IOrderRepository
+OrderService ..> ICatalogRepository
+OrderService ..> ICustomerRepository
+OrderService ..> ICourierRepository
+OrderService ..> OrderValidator
+OrderService ..> DeliveryDtoMapper
+
+CatalogService ..> ICatalogRepository
+CatalogService ..> ICustomerRepository
+CatalogService ..> CatalogValidator
+CatalogService ..> DeliveryDtoMapper
+
+CustomerService ..> ICustomerRepository
+CustomerService ..> CustomerValidator
+CustomerService ..> DeliveryDtoMapper
+
+CourierService ..> ICourierRepository
+CourierService ..> IOrderRepository
+CourierService ..> CourierValidator
+CourierService ..> DeliveryDtoMapper
+
+PaymentAppService ..> IPaymentRepository
+PaymentAppService ..> IOrderRepository
+PaymentAppService ..> PaymentValidator
+PaymentAppService ..> DeliveryDtoMapper
+
+ReviewService ..> IReviewRepository
+ReviewService ..> IOrderRepository
+ReviewService ..> ReviewValidator
+ReviewService ..> DeliveryDtoMapper
+
+OrderRepository ..|> IOrderRepository
+CatalogRepository ..|> ICatalogRepository
+CustomerRepository ..|> ICustomerRepository
+CourierRepository ..|> ICourierRepository
+PaymentRepository ..|> IPaymentRepository
+ReviewRepository ..|> IReviewRepository
+
+OrderRepository ..> AppDbContext
+CatalogRepository ..> AppDbContext
+CustomerRepository ..> AppDbContext
+CourierRepository ..> AppDbContext
+PaymentRepository ..> AppDbContext
+ReviewRepository ..> AppDbContext
+
+Order "1" o-- "1..*" OrderItem
+OrderItem "*" --> "1" Product
+Order "*" --> "1" Store
+Order "*" --> "1" Customer
+Order "*" --> "1" Address : DeliveryAddress
+Order "*" --> "0..1" Courier
+Store "*" --> "1" Address : Location
+Payment "*" --> "1" Order
+Review "*" --> "1" Order
+Address "*" --> "0..1" Customer
+
+Order ..> OrderStatus
+Payment ..> PaymentMethod
+Payment ..> PaymentStatus
+Courier ..> VehicleType
+
+@enduml

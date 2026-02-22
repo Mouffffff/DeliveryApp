@@ -3,6 +3,10 @@
   <ItemGroup>
     <ProjectReference Include="..\DeliveryApp.Service\DeliveryApp.Service.csproj" />
     <ProjectReference Include="..\DeliveryApp.Infrastructure\DeliveryApp.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Catalog\DeliveryApp.Modules.Catalog.Infrastructure\DeliveryApp.Modules.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Ordering\DeliveryApp.Modules.Ordering.Infrastructure\DeliveryApp.Modules.Ordering.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Dispatch\DeliveryApp.Modules.Dispatch.Infrastructure\DeliveryApp.Modules.Dispatch.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Payments\DeliveryApp.Modules.Payments.Infrastructure\DeliveryApp.Modules.Payments.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -11,6 +15,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
   </ItemGroup>
 
   <PropertyGroup>
