@@ -1,0 +1,41 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DeliveryApp.Api/DeliveryApp.Api.csproj" />
+    <Project Path="src/DeliveryApp.Application/DeliveryApp.Application.csproj" />
+    <Project Path="src/DeliveryApp.Domain/DeliveryApp.Domain.csproj" />
+    <Project Path="src/DeliveryApp.Frontend/DeliveryApp.Frontend.csproj" />
+    <Project Path="src/DeliveryApp.Infrastructure/DeliveryApp.Infrastructure.csproj" />
+    <Project Path="src/DeliveryApp.Service/DeliveryApp.Service.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/DeliveryApp.BuildingBlocks.Application/DeliveryApp.BuildingBlocks.Application.csproj" />
+    <Project Path="src/BuildingBlocks/DeliveryApp.BuildingBlocks.Domain/DeliveryApp.BuildingBlocks.Domain.csproj" />
+    <Project Path="src/BuildingBlocks/DeliveryApp.BuildingBlocks.Infrastructure/DeliveryApp.BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Catalog/">
+    <Project Path="src/Modules/Catalog/DeliveryApp.Modules.Catalog.Application/DeliveryApp.Modules.Catalog.Application.csproj" />
+    <Project Path="src/Modules/Catalog/DeliveryApp.Modules.Catalog.Domain/DeliveryApp.Modules.Catalog.Domain.csproj" />
+    <Project Path="src/Modules/Catalog/DeliveryApp.Modules.Catalog.Infrastructure/DeliveryApp.Modules.Catalog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Dispatch/">
+    <Project Path="src/Modules/Dispatch/DeliveryApp.Modules.Dispatch.Application/DeliveryApp.Modules.Dispatch.Application.csproj" />
+    <Project Path="src/Modules/Dispatch/DeliveryApp.Modules.Dispatch.Domain/DeliveryApp.Modules.Dispatch.Domain.csproj" />
+    <Project Path="src/Modules/Dispatch/DeliveryApp.Modules.Dispatch.Infrastructure/DeliveryApp.Modules.Dispatch.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/">
+    <Project Path="src/Modules/Identity/DeliveryApp.Modules.Identity.Application/DeliveryApp.Modules.Identity.Application.csproj" />
+    <Project Path="src/Modules/Identity/DeliveryApp.Modules.Identity.Domain/DeliveryApp.Modules.Identity.Domain.csproj" />
+    <Project Path="src/Modules/Identity/DeliveryApp.Modules.Identity.Infrastructure/DeliveryApp.Modules.Identity.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Ordering/">
+    <Project Path="src/Modules/Ordering/DeliveryApp.Modules.Ordering.Application/DeliveryApp.Modules.Ordering.Application.csproj" />
+    <Project Path="src/Modules/Ordering/DeliveryApp.Modules.Ordering.Domain/DeliveryApp.Modules.Ordering.Domain.csproj" />
+    <Project Path="src/Modules/Ordering/DeliveryApp.Modules.Ordering.Infrastructure/DeliveryApp.Modules.Ordering.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Payments/">
+    <Project Path="src/Modules/Payments/DeliveryApp.Modules.Payments.Application/DeliveryApp.Modules.Payments.Application.csproj" />
+    <Project Path="src/Modules/Payments/DeliveryApp.Modules.Payments.Domain/DeliveryApp.Modules.Payments.Domain.csproj" />
+    <Project Path="src/Modules/Payments/DeliveryApp.Modules.Payments.Infrastructure/DeliveryApp.Modules.Payments.Infrastructure.csproj" />
+  </Folder>
+</Solution>

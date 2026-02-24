@@ -1,0 +1,68 @@
+@startuml
+title DeliveryApp - Sequence: Assign Courier, Pay, Review
+autonumber
+
+actor Client
+participant "DeliveryEndpoints" as API
+participant "CourierService / PaymentAppService / ReviewService" as Service
+participant "IOrderRepository / ICourierRepository / IPaymentRepository / IReviewRepository" as Repo
+database "SQL Server" as DB
+
+== Assign Courier ==
+Client -> API: PATCH /api/orders/{id}/assign-courier
+API -> Service: AssignCourierAsync(orderId, courierId)
+Service -> Repo: GetByIdAsync(orderId)
+Repo -> DB: SELECT Order
+DB --> Repo: Order
+Repo --> Service: Order
+Service -> Repo: GetCourierByIdAsync(courierId)
+Repo -> DB: SELECT Courier
+DB --> Repo: Courier
+Repo --> Service: Courier
+Service -> Repo: UpdateAsync(order with courier)
+Repo -> DB: UPDATE Orders
+DB --> Repo: done
+Repo --> Service: updated order
+Service -> Repo: SetCourierAvailabilityAsync(false)
+Repo -> DB: UPDATE Couriers
+DB --> Repo: done
+Service --> API: Success(DeliveryDto)
+API --> Client: 200 OK
+
+== Payment ==
+Client -> API: POST /api/orders/{id}/payments
+API -> Service: CreatePaymentAsync(orderId, dto)
+Service -> Repo: GetByIdAsync(orderId)
+Repo -> DB: SELECT Order
+DB --> Repo: Order
+Repo --> Service: Order
+Service -> Repo: GetPaymentsByOrderIdAsync(orderId)
+Repo -> DB: SELECT Payments
+DB --> Repo: Payments
+Repo --> Service: Payments
+Service -> Repo: AddPaymentAsync(payment completed)
+Repo -> DB: INSERT Payment
+DB --> Repo: created payment
+Repo --> Service: Payment
+Service --> API: Success(PaymentDto)
+API --> Client: 201 Created
+
+== Review ==
+Client -> API: POST /api/orders/{id}/reviews
+API -> Service: CreateOrderReviewAsync(orderId, dto)
+Service -> Repo: GetByIdAsync(orderId)
+Repo -> DB: SELECT Order
+DB --> Repo: Order
+Repo --> Service: Order (must be Delivered)
+Service -> Repo: ReviewExistsForOrderAsync(orderId)
+Repo -> DB: SELECT COUNT Reviews
+DB --> Repo: bool
+Repo --> Service: bool
+Service -> Repo: AddReviewAsync(review)
+Repo -> DB: INSERT Review
+DB --> Repo: created review
+Repo --> Service: Review
+Service --> API: Success(ReviewDto)
+API --> Client: 201 Created
+
+@enduml

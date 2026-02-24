@@ -1,0 +1,403 @@
+@page "/orders/{OrderId:int}"
+
+@inject DeliveryApiClient ApiClient
+@inject AppContextState Sim
+@inject AuthSessionState Auth
+
+<PageTitle>Suivi commande</PageTitle>
+
+<h1>Suivi de la commande #@OrderId</h1>
+
+@if (_loading)
+{
+    <p>Chargement de la commande...</p>
+}
+else if (_error is not null)
+{
+    <p class="error-text">@_error</p>
+    <button class="btn btn-muted" @onclick="LoadAllAsync">Recharger</button>
+}
+else if (_order is null)
+{
+    <p>Commande introuvable.</p>
+}
+else
+{
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Resume</h2>
+            <p><strong>Statut:</strong> @_order.Status</p>
+            <p><strong>Total:</strong> @_order.TotalPrice.ToString("0.00") EUR</p>
+            <p><strong>Store:</strong> @_order.StoreName (#@_order.StoreId)</p>
+            <p><strong>Adresse pickup:</strong> @FormatAddress(_order.StoreStreet, _order.StoreCity, _order.StoreZipCode)</p>
+            <p><strong>Client:</strong> @_order.CustomerName (#@_order.CustomerId)</p>
+            <p>
+                <strong>Telephone client:</strong> @FormatPhone(_order.CustomerPhoneNumber)
+                @if (!string.IsNullOrWhiteSpace(_order.CustomerPhoneNumber))
+                {
+                    <a class="btn btn-muted" href="@BuildTelUri(_order.CustomerPhoneNumber)">Appeler</a>
+                }
+            </p>
+            @if (_order.CourierId.HasValue)
+            {
+                <p><strong>Livreur:</strong> @(string.IsNullOrWhiteSpace(_order.CourierName) ? $"#{_order.CourierId.Value}" : _order.CourierName) (@(_order.CourierVehicle ?? "Vehicule inconnu"))</p>
+                <p>
+                    <strong>Telephone livreur:</strong> @FormatPhone(_order.CourierPhoneNumber ?? string.Empty)
+                    @if (!string.IsNullOrWhiteSpace(_order.CourierPhoneNumber))
+                    {
+                        <a class="btn btn-muted" href="@BuildTelUri(_order.CourierPhoneNumber)">Appeler</a>
+                    }
+                </p>
+            }
+            else
+            {
+                <p><strong>Livreur:</strong> Pas encore affecte</p>
+            }
+            <p><strong>Adresse livraison:</strong> @FormatAddress(_order.DeliveryStreet, _order.DeliveryCity, _order.DeliveryZipCode) (#@_order.DeliveryAddressId)</p>
+            <p><strong>CreatedAt:</strong> @_order.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</p>
+
+            <h3>Articles</h3>
+            <div class="mini-list">
+                @foreach (var item in _order.Items)
+                {
+                    <p>@item.Quantity x @item.ProductName (@item.LineTotal.ToString("0.00") EUR)</p>
+                }
+            </div>
+
+            <button class="btn btn-muted" @onclick="LoadAllAsync">Actualiser</button>
+        </article>
+
+        @if (CanDispatch)
+        {
+            <article class="panel-card">
+                <h2>Operations dispatch</h2>
+
+                <div class="section-split">
+                    <h3>Affectation courier</h3>
+                    <label class="field-label" for="courierId">CourierId</label>
+                    <input id="courierId" class="form-input" type="number" min="1" @bind="_courierId" />
+                    <button class="btn btn-accent" @onclick="AssignCourierAsync" disabled="@_actionLoading">Affecter</button>
+                </div>
+
+                <div class="section-split">
+                    <h3>Mise a jour statut</h3>
+                    <label class="field-label" for="status">Status</label>
+                    <select id="status" class="form-input" @bind="_selectedStatus">
+                        @foreach (var status in Enum.GetValues<OrderStatusCode>())
+                        {
+                            <option value="@((int)status)">@((int)status) - @status</option>
+                        }
+                    </select>
+                    <button class="btn btn-accent" @onclick="UpdateStatusAsync" disabled="@_actionLoading">Mettre a jour</button>
+                </div>
+
+                @if (_availableCouriers.Count > 0)
+                {
+                    <div class="section-split">
+                        <h3>Couriers disponibles</h3>
+                        <div class="mini-list">
+                            @foreach (var courier in _availableCouriers)
+                            {
+                                <p>#@courier.Id - @courier.FullName (@courier.Vehicle)</p>
+                            }
+                        </div>
+                    </div>
+                }
+            </article>
+        }
+    </section>
+
+    @if (CanManagePaymentReview)
+    {
+        <section class="panel-grid">
+            <article class="panel-card">
+                <h2>Paiement</h2>
+                <p><strong>Montant a payer:</strong> @PaymentDueAmount.ToString("0.00") EUR</p>
+                <p>Le montant est fixe automatiquement par la commande.</p>
+
+                <label class="field-label" for="method">Methode</label>
+                <select id="method" class="form-input" @bind="_paymentMethod">
+                    @foreach (var method in Enum.GetValues<PaymentMethodCode>())
+                    {
+                        <option value="@((int)method)">@((int)method) - @method</option>
+                    }
+                </select>
+
+                <button class="btn btn-accent" @onclick="CreatePaymentAsync" disabled="@_actionLoading">Payer</button>
+
+                <h3>Historique paiements</h3>
+                @if (_payments.Count == 0)
+                {
+                    <p>Aucun paiement.</p>
+                }
+                else
+                {
+                    <div class="mini-list">
+                        @foreach (var payment in _payments)
+                        {
+                            <p>#@payment.Id - @payment.Amount.ToString("0.00") EUR - @payment.Status - @payment.Method</p>
+                        }
+                    </div>
+                }
+            </article>
+
+            <article class="panel-card">
+                <h2>Avis</h2>
+                <label class="field-label" for="rating">Note (1-5)</label>
+                <input id="rating" class="form-input" type="number" min="1" max="5" @bind="_reviewRating" />
+
+                <label class="field-label" for="comment">Commentaire</label>
+                <textarea id="comment" class="form-input" rows="3" @bind="_reviewComment"></textarea>
+
+                <button class="btn btn-accent" @onclick="CreateReviewAsync" disabled="@_actionLoading">Poster l'avis</button>
+
+                <h3>Historique avis</h3>
+                @if (_reviews.Count == 0)
+                {
+                    <p>Aucun avis.</p>
+                }
+                else
+                {
+                    <div class="mini-list">
+                        @foreach (var review in _reviews)
+                        {
+                            <p>#@review.Id - @review.Rating/5 - @review.Comment</p>
+                        }
+                    </div>
+                }
+            </article>
+        </section>
+    }
+
+    @if (_actionError is not null)
+    {
+        <p class="error-text">@_actionError</p>
+    }
+
+    @if (_actionSuccess is not null)
+    {
+        <p class="success-text">@_actionSuccess</p>
+    }
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    private bool _loading = true;
+    private bool _actionLoading;
+    private string? _error;
+    private string? _actionError;
+    private string? _actionSuccess;
+
+    private DeliveryDto? _order;
+    private List<CourierDto> _availableCouriers = [];
+    private List<PaymentDto> _payments = [];
+    private List<ReviewDto> _reviews = [];
+
+    private int _selectedStatus;
+    private int _courierId;
+    private int _paymentMethod;
+    private int _reviewRating = 5;
+    private string _reviewComment = string.Empty;
+    private decimal PaymentDueAmount => _order?.TotalPrice ?? 0m;
+    private bool CanDispatch => Auth.IsInRole(AppRoleCode.Courier);
+    private bool CanManagePaymentReview => Auth.IsInRole(AppRoleCode.Customer);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Sim.SetOrder(OrderId);
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _loading = true;
+        _error = null;
+        _actionError = null;
+        _actionSuccess = null;
+
+        var orderResult = await ApiClient.GetOrderAsync(OrderId);
+        if (!orderResult.IsSuccess || orderResult.Value is null)
+        {
+            _error = orderResult.Error ?? "Commande introuvable.";
+            _loading = false;
+            return;
+        }
+
+        _order = orderResult.Value;
+        Sim.SetOrder(_order.Id);
+        Sim.SetCustomer(_order.CustomerId);
+        Sim.SetAddress(_order.DeliveryAddressId);
+
+        if (Enum.TryParse<OrderStatusCode>(_order.Status, true, out var status))
+        {
+            _selectedStatus = (int)status;
+        }
+        else
+        {
+            _selectedStatus = 0;
+        }
+
+        Task<ApiResult<IReadOnlyList<CourierDto>>> couriersTask = CanDispatch
+            ? ApiClient.GetAvailableCouriersAsync()
+            : Task.FromResult(ApiResult<IReadOnlyList<CourierDto>>.Success(Array.Empty<CourierDto>()));
+        var paymentsTask = ApiClient.GetPaymentsAsync(OrderId);
+        var reviewsTask = ApiClient.GetReviewsAsync(OrderId);
+
+        await Task.WhenAll(couriersTask, paymentsTask, reviewsTask);
+
+        var couriersResult = await couriersTask;
+        var paymentsResult = await paymentsTask;
+        var reviewsResult = await reviewsTask;
+
+        _availableCouriers = couriersResult.IsSuccess ? (couriersResult.Value?.ToList() ?? []) : [];
+        _payments = paymentsResult.IsSuccess ? (paymentsResult.Value?.ToList() ?? []) : [];
+        _reviews = reviewsResult.IsSuccess ? (reviewsResult.Value?.ToList() ?? []) : [];
+
+        if (_courierId <= 0 && Sim.SelectedCourierId is > 0)
+        {
+            _courierId = Sim.SelectedCourierId.Value;
+        }
+
+        if (_courierId <= 0 && _availableCouriers.Count > 0)
+        {
+            _courierId = _availableCouriers[0].Id;
+        }
+
+        _loading = false;
+    }
+
+    private async Task AssignCourierAsync()
+    {
+        if (!CanDispatch)
+        {
+            _actionError = "Action non autorisee.";
+            return;
+        }
+
+        if (_courierId <= 0)
+        {
+            _actionError = "Saisis un CourierId valide.";
+            return;
+        }
+
+        _actionLoading = true;
+        _actionError = null;
+        _actionSuccess = null;
+
+        var result = await ApiClient.AssignCourierAsync(OrderId, _courierId);
+        if (!result.IsSuccess)
+        {
+            _actionError = result.Error;
+        }
+        else
+        {
+            _actionSuccess = "Courier affecte.";
+            Sim.SetCourier(_courierId);
+            await LoadAllAsync();
+        }
+
+        _actionLoading = false;
+    }
+
+    private async Task UpdateStatusAsync()
+    {
+        if (!CanDispatch)
+        {
+            _actionError = "Action non autorisee.";
+            return;
+        }
+
+        _actionLoading = true;
+        _actionError = null;
+        _actionSuccess = null;
+
+        int? courierForUpdate = _courierId > 0 ? _courierId : null;
+        var result = await ApiClient.UpdateOrderAsync(OrderId, _selectedStatus, courierForUpdate);
+        if (!result.IsSuccess)
+        {
+            _actionError = result.Error;
+        }
+        else
+        {
+            _actionSuccess = "Statut mis a jour.";
+            if (_courierId > 0)
+            {
+                Sim.SetCourier(_courierId);
+            }
+
+            await LoadAllAsync();
+        }
+
+        _actionLoading = false;
+    }
+
+    private async Task CreatePaymentAsync()
+    {
+        if (!CanManagePaymentReview)
+        {
+            _actionError = "Action non autorisee.";
+            return;
+        }
+
+        _actionLoading = true;
+        _actionError = null;
+        _actionSuccess = null;
+
+        var result = await ApiClient.CreatePaymentAsync(OrderId, _paymentMethod);
+        if (!result.IsSuccess)
+        {
+            _actionError = result.Error;
+        }
+        else
+        {
+            _actionSuccess = "Paiement enregistre.";
+            await LoadAllAsync();
+        }
+
+        _actionLoading = false;
+    }
+
+    private async Task CreateReviewAsync()
+    {
+        if (!CanManagePaymentReview)
+        {
+            _actionError = "Action non autorisee.";
+            return;
+        }
+
+        _actionLoading = true;
+        _actionError = null;
+        _actionSuccess = null;
+
+        var result = await ApiClient.CreateReviewAsync(OrderId, _reviewRating, _reviewComment);
+        if (!result.IsSuccess)
+        {
+            _actionError = result.Error;
+        }
+        else
+        {
+            _actionSuccess = "Avis enregistre.";
+            _reviewComment = string.Empty;
+            await LoadAllAsync();
+        }
+
+        _actionLoading = false;
+    }
+
+    private static string FormatAddress(string street, string city, string zipCode)
+    {
+        var parts = new[] { street, city, zipCode }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim());
+
+        return parts.Any() ? string.Join(", ", parts) : "Adresse indisponible";
+    }
+
+    private static string FormatPhone(string phone) =>
+        string.IsNullOrWhiteSpace(phone) ? "Numero indisponible" : phone;
+
+    private static string BuildTelUri(string phone) =>
+        $"tel:{new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray())}";
+}

@@ -1,0 +1,32 @@
+@startuml
+title DeliveryApp - Order Status State Machine
+
+[*] --> Pending
+Pending --> Accepted
+Accepted --> Preparing
+Preparing --> ReadyForPickup
+ReadyForPickup --> PickedUp
+PickedUp --> OutForDelivery
+OutForDelivery --> Delivered
+
+Pending --> Cancelled
+Accepted --> Cancelled
+Preparing --> Cancelled
+ReadyForPickup --> Cancelled
+PickedUp --> Cancelled
+OutForDelivery --> Cancelled
+
+Delivered --> [*]
+Cancelled --> [*]
+
+note right of Pending
+Assigned courier can auto-move
+Pending -> Accepted
+end note
+
+note right of Delivered
+Courier availability reset to true
+if CourierId exists
+end note
+
+@enduml

@@ -1,0 +1,254 @@
+@page "/stores"
+
+@inject DeliveryApiClient ApiClient
+@inject CartState Cart
+
+<PageTitle>Stores</PageTitle>
+
+<h1>Choisir un restaurant</h1>
+
+@if (_loadingStores)
+{
+    <p>Chargement des stores...</p>
+}
+else if (_storeError is not null)
+{
+    <p class="error-text">@_storeError</p>
+}
+else
+{
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Stores disponibles</h2>
+
+            <label class="field-label" for="storeSearch">Recherche</label>
+            <input id="storeSearch" class="form-input" @bind="_searchText" placeholder="Nom du store ou ville" />
+
+            <label class="field-label" for="storeCategory">Categorie</label>
+            <select id="storeCategory" class="form-input" @bind="_categoryFilter">
+                <option value="all">Toutes les categories</option>
+                @foreach (var category in StoreCategories)
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+
+            <div class="section-split">
+                @if (FilteredStores.Count == 0)
+                {
+                    <p>Aucun store pour ce filtre.</p>
+                }
+                else
+                {
+                    <div class="list-stack">
+                        @foreach (var store in FilteredStores)
+                        {
+                            <div class="choice-card @(store.Id == _selectedStore?.Id ? "selected" : string.Empty)">
+                                <button class="choice-btn" @onclick="() => SelectStoreAsync(store)">
+                                    <span class="name">@store.Name</span>
+                                    <span>@store.Category - @store.City</span>
+                                </button>
+                                <a class="btn btn-muted" href="/stores/@store.Id">Voir infos + menu</a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="panel-card">
+            @if (_selectedStore is null)
+            {
+                <h2>Menu</h2>
+                <p>Selectionne un store pour afficher les produits.</p>
+            }
+            else
+            {
+                <h2>@_selectedStore.Name</h2>
+                <div class="summary-block">
+                    <div><strong>StoreId:</strong> @_selectedStore.Id</div>
+                    <div><strong>Categorie:</strong> @_selectedStore.Category</div>
+                    <div><strong>Adresse:</strong> @_selectedStore.Street, @_selectedStore.City @_selectedStore.ZipCode</div>
+                </div>
+
+                @if (_lastAddMessage is not null)
+                {
+                    <p class="success-text">@_lastAddMessage</p>
+                }
+
+                @if (_loadingProducts)
+                {
+                    <p>Chargement du menu...</p>
+                }
+                else if (_productError is not null)
+                {
+                    <p class="error-text">@_productError</p>
+                }
+                else if (_products.Count == 0)
+                {
+                    <p>Pas de produits disponibles pour ce store.</p>
+                }
+                else
+                {
+                    <div class="list-stack">
+                        @foreach (var product in _products)
+                        {
+                            <div class="line-item">
+                                <div>
+                                    <strong>@product.Name</strong>
+                                    <div>@product.Price.ToString("0.00") EUR</div>
+                                </div>
+                                <div class="line-actions">
+                                    <input class="qty-input" type="number" min="0" value="@GetQuantity(product.Id)" @onchange="(e => UpdateQuantity(product.Id, e))" />
+                                    <button class="btn btn-accent" @onclick="() => AddToCart(product)">Ajouter</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </article>
+    </section>
+}
+
+<section class="panel-card cart-summary">
+    <h2>Panier courant</h2>
+    @if (Cart.TotalItems == 0)
+    {
+        <p>Le panier est vide.</p>
+    }
+    else
+    {
+        <p>@Cart.TotalItems article(s) - @Cart.TotalAmount.ToString("0.00") EUR</p>
+        <a class="btn btn-accent" href="/cart">Voir le panier</a>
+    }
+</section>
+
+@code {
+    private bool _loadingStores = true;
+    private bool _loadingProducts;
+    private string? _storeError;
+    private string? _productError;
+    private string? _lastAddMessage;
+
+    private string _searchText = string.Empty;
+    private string _categoryFilter = "all";
+
+    private List<StoreDto> _stores = [];
+    private StoreDto? _selectedStore;
+    private List<ProductDto> _products = [];
+    private readonly Dictionary<int, int> _productQuantities = [];
+
+    private List<StoreDto> FilteredStores =>
+        _stores.Where(store =>
+        {
+            var categoryMatch = _categoryFilter == "all"
+                || string.Equals(store.Category, _categoryFilter, StringComparison.OrdinalIgnoreCase);
+
+            if (!categoryMatch)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(_searchText))
+            {
+                return true;
+            }
+
+            var search = _searchText.Trim();
+            return store.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                   || store.City.Contains(search, StringComparison.OrdinalIgnoreCase);
+        }).ToList();
+
+    private IEnumerable<string> StoreCategories =>
+        _stores.Select(s => s.Category)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var storesResult = await ApiClient.GetStoresAsync();
+        if (storesResult.IsSuccess)
+        {
+            _stores = storesResult.Value?.ToList() ?? [];
+            if (_stores.Count > 0)
+            {
+                await SelectStoreAsync(_stores[0]);
+            }
+        }
+        else
+        {
+            _storeError = storesResult.Error ?? "Erreur lors du chargement des stores.";
+        }
+
+        _loadingStores = false;
+    }
+
+    private async Task SelectStoreAsync(StoreDto store)
+    {
+        _selectedStore = store;
+        _productError = null;
+        _loadingProducts = true;
+        _products = [];
+
+        var productsResult = await ApiClient.GetStoreProductsAsync(store.Id);
+        if (productsResult.IsSuccess)
+        {
+            _products = productsResult.Value?.ToList() ?? [];
+            foreach (var product in _products)
+            {
+                if (!_productQuantities.ContainsKey(product.Id))
+                {
+                    _productQuantities[product.Id] = 0;
+                }
+            }
+        }
+        else
+        {
+            _productError = productsResult.Error ?? "Erreur lors du chargement du menu.";
+        }
+
+        _loadingProducts = false;
+    }
+
+    private int GetQuantity(int productId)
+    {
+        if (!_productQuantities.TryGetValue(productId, out var qty))
+        {
+            qty = 0;
+            _productQuantities[productId] = qty;
+        }
+
+        return qty;
+    }
+
+    private void UpdateQuantity(int productId, ChangeEventArgs e)
+    {
+        if (e.Value is null)
+        {
+            _productQuantities[productId] = 0;
+            return;
+        }
+
+        if (!int.TryParse(e.Value.ToString(), out var qty) || qty < 0)
+        {
+            qty = 0;
+        }
+
+        _productQuantities[productId] = qty;
+    }
+
+    private void AddToCart(ProductDto product)
+    {
+        var quantity = GetQuantity(product.Id);
+        if (quantity <= 0)
+        {
+            quantity = 1;
+        }
+
+        Cart.AddProduct(product, quantity);
+        _productQuantities[product.Id] = 0;
+        _lastAddMessage = $"{quantity} x {product.Name} ajoute au panier.";
+    }
+}

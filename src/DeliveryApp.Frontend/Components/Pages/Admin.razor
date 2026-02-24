@@ -1,0 +1,342 @@
+@page "/admin"
+
+@inject DeliveryApiClient ApiClient
+
+<PageTitle>Administration</PageTitle>
+
+<h1>Administration</h1>
+<p>Le role admin gere les stores et la moderation des comptes. Les clients et livreurs passent par l'inscription.</p>
+
+<section class="panel-grid">
+    <article class="panel-card">
+        <h2>Nouveau store</h2>
+        <label class="field-label" for="storeName">Nom</label>
+        <input id="storeName" class="form-input" @bind="_storeName" />
+
+        <label class="field-label" for="storeCategory">Categorie</label>
+        <input id="storeCategory" class="form-input" @bind="_storeCategory" />
+
+        <label class="field-label" for="storeAddressId">Adresse du store</label>
+        @if (_addresses.Count == 0)
+        {
+            <p class="error-text">Ajoute d'abord une adresse de store.</p>
+        }
+        else
+        {
+            <select id="storeAddressId" class="form-input" @bind="_storeAddressId">
+                @foreach (var address in _addresses)
+                {
+                    <option value="@address.Id">#@address.Id - @address.Street, @address.City</option>
+                }
+            </select>
+        }
+
+        <p><strong>StoreId est genere automatiquement par la base.</strong></p>
+
+        <button class="btn btn-accent" @onclick="CreateStoreAsync">Ajouter store</button>
+    </article>
+
+    <article class="panel-card">
+        <h2>Nouvelle adresse (store)</h2>
+        <label class="field-label" for="street">Rue</label>
+        <input id="street" class="form-input" @bind="_street" />
+
+        <label class="field-label" for="city">Ville</label>
+        <input id="city" class="form-input" @bind="_city" />
+
+        <label class="field-label" for="zip">Code postal</label>
+        <input id="zip" class="form-input" @bind="_zipCode" />
+
+        <button class="btn btn-accent" @onclick="CreateAddressAsync">Ajouter adresse</button>
+    </article>
+</section>
+
+@if (_message is not null)
+{
+    <p class="success-text">@_message</p>
+}
+
+@if (_error is not null)
+{
+    <p class="error-text">@_error</p>
+}
+
+<section class="panel-grid">
+    <article class="panel-card">
+        <h2>Stores existants</h2>
+        @if (_loadingReferences)
+        {
+            <p>Chargement...</p>
+        }
+        else if (_stores.Count == 0)
+        {
+            <p>Aucun store.</p>
+        }
+        else
+        {
+            <div class="panel-grid">
+                @foreach (var store in _stores)
+                {
+                    <article class="panel-card">
+                        <p><strong>#@store.Id - @store.Name</strong></p>
+                        <p>Adresse actuelle: @store.Street, @store.City @store.ZipCode</p>
+
+                        <label class="field-label">Nom</label>
+                        <input class="form-input" @bind="store.Name" />
+
+                        <label class="field-label">Categorie</label>
+                        <input class="form-input" @bind="store.Category" />
+
+                        <label class="field-label">AddressId</label>
+                        <input class="form-input" type="number" min="1" @bind="store.AddressId" />
+
+                        <div class="hero-actions">
+                            <button class="btn btn-accent" @onclick="() => UpdateStoreAsync(store)">Modifier</button>
+                            <button class="btn btn-muted" @onclick="() => DeleteStoreAsync(store.Id)">Supprimer</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </article>
+
+    <article class="panel-card">
+        <h2>Comptes utilisateurs</h2>
+        @if (_loadingReferences)
+        {
+            <p>Chargement...</p>
+        }
+        else if (_accounts.Count == 0)
+        {
+            <p>Aucun compte.</p>
+        }
+        else
+        {
+            <div class="mini-list">
+                @foreach (var account in _accounts)
+                {
+                    <article class="panel-card">
+                        <p><strong>#@account.Id - @account.DisplayName</strong></p>
+                        <p>@account.Email</p>
+                        <p>Role: @account.Role | Statut: @(account.IsActive ? "Actif" : "Bloque")</p>
+                        @if (account.CustomerId.HasValue)
+                        {
+                            <p>CustomerId: @account.CustomerId</p>
+                        }
+                        @if (account.CourierId.HasValue)
+                        {
+                            <p>CourierId: @account.CourierId</p>
+                        }
+                        <button class="btn @(account.IsActive ? "btn-muted" : "btn-accent")"
+                                @onclick="() => SetAccountStatusAsync(account, !account.IsActive)">
+                            @(account.IsActive ? "Bloquer compte" : "Debloquer compte")
+                        </button>
+                    </article>
+                }
+            </div>
+        }
+    </article>
+
+    <article class="panel-card">
+        <h2>Adresses disponibles</h2>
+        @if (_loadingReferences)
+        {
+            <p>Chargement...</p>
+        }
+        else if (_addresses.Count == 0)
+        {
+            <p>Aucune adresse.</p>
+        }
+        else
+        {
+            <div class="mini-list">
+                @foreach (var address in _addresses)
+                {
+                    <p>#@address.Id - @address.Street, @address.City @address.ZipCode</p>
+                }
+            </div>
+        }
+    </article>
+</section>
+
+@code {
+    private string _storeName = string.Empty;
+    private string _storeCategory = string.Empty;
+    private int _storeAddressId = 1;
+
+    private string _street = string.Empty;
+    private string _city = string.Empty;
+    private string _zipCode = string.Empty;
+
+    private string? _message;
+    private string? _error;
+
+    private bool _loadingReferences = true;
+    private List<EditableStore> _stores = [];
+    private List<AddressDto> _addresses = [];
+    private List<AdminUserAccountDto> _accounts = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReferencesAsync();
+    }
+
+    private async Task LoadReferencesAsync()
+    {
+        _loadingReferences = true;
+
+        var storesTask = ApiClient.GetStoresAsync();
+        var addressesTask = ApiClient.GetAddressesAsync();
+        var accountsTask = ApiClient.GetAdminAccountsAsync();
+
+        await Task.WhenAll(storesTask, addressesTask, accountsTask);
+
+        var storesResult = await storesTask;
+        var addressesResult = await addressesTask;
+        var accountsResult = await accountsTask;
+
+        _stores = storesResult.IsSuccess
+            ? (storesResult.Value?.Select(s => new EditableStore
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Category = s.Category,
+                    AddressId = s.AddressId,
+                    Street = s.Street,
+                    City = s.City,
+                    ZipCode = s.ZipCode
+                }).ToList() ?? [])
+            : [];
+        _addresses = addressesResult.IsSuccess ? (addressesResult.Value?.ToList() ?? []) : [];
+        _accounts = accountsResult.IsSuccess ? (accountsResult.Value?.ToList() ?? []) : [];
+
+        if (_addresses.Count > 0 && _storeAddressId <= 0)
+        {
+            _storeAddressId = _addresses[0].Id;
+        }
+        else if (_addresses.Count > 0 && _addresses.All(a => a.Id != _storeAddressId))
+        {
+            _storeAddressId = _addresses[0].Id;
+        }
+
+        _loadingReferences = false;
+    }
+
+    private async Task CreateStoreAsync()
+    {
+        _message = null;
+        _error = null;
+
+        if (_storeAddressId <= 0)
+        {
+            _error = "Selectionne d'abord une adresse valide pour le store.";
+            return;
+        }
+
+        var result = await ApiClient.CreateStoreAsync(new CreateStoreRequest(_storeName, _storeCategory, _storeAddressId));
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _message = $"Store cree avec succes (ID: {result.Value?.Id}).";
+        await LoadReferencesAsync();
+    }
+
+    private async Task CreateAddressAsync()
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.CreateAddressAsync(new CreateAddressRequest(_street, _city, _zipCode, null));
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _message = $"Adresse creee avec succes (ID: {result.Value?.Id}).";
+        await LoadReferencesAsync();
+    }
+
+    private async Task UpdateStoreAsync(EditableStore store)
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.UpdateStoreAsync(
+            store.Id,
+            new UpdateStoreRequest(store.Name, store.Category, store.AddressId));
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        if (result.Value is not null)
+        {
+            store.Name = result.Value.Name;
+            store.Category = result.Value.Category;
+            store.AddressId = result.Value.AddressId;
+            store.Street = result.Value.Street;
+            store.City = result.Value.City;
+            store.ZipCode = result.Value.ZipCode;
+        }
+
+        _message = $"Store #{store.Id} modifie avec succes.";
+    }
+
+    private async Task DeleteStoreAsync(int storeId)
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.DeleteStoreAsync(storeId);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        _stores.RemoveAll(s => s.Id == storeId);
+        _message = $"Store #{storeId} supprime avec succes.";
+    }
+
+    private async Task SetAccountStatusAsync(AdminUserAccountDto account, bool isActive)
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.SetAccountStatusAsync(account.Id, isActive);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        if (result.Value is not null)
+        {
+            var index = _accounts.FindIndex(a => a.Id == account.Id);
+            if (index >= 0)
+            {
+                _accounts[index] = result.Value;
+            }
+        }
+
+        _message = isActive
+            ? $"Compte #{account.Id} debloque."
+            : $"Compte #{account.Id} bloque.";
+    }
+
+    private sealed class EditableStore
+    {
+        public int Id { get; init; }
+        public string Name { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public int AddressId { get; set; }
+        public string Street { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+    }
+}

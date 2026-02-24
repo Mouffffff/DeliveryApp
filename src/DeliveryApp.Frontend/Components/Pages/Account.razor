@@ -1,0 +1,317 @@
+@page "/account"
+
+@inject DeliveryApiClient ApiClient
+@inject AppContextState Sim
+@inject AuthSessionState Auth
+@inject CartState Cart
+@inject NavigationManager Navigation
+
+<PageTitle>Connexion</PageTitle>
+
+<h1>Connexion / Inscription</h1>
+
+@if (Auth.IsAuthenticated)
+{
+    <section class="panel-card">
+        <h2>Session active</h2>
+        <div class="summary-block">
+            <div><strong>Utilisateur:</strong> @Auth.DisplayName (@Auth.Email)</div>
+            <div><strong>Role:</strong> @Auth.Role</div>
+            @if (Auth.CustomerId.HasValue)
+            {
+                <div><strong>CustomerId:</strong> @Auth.CustomerId</div>
+            }
+            @if (Auth.CourierId.HasValue)
+            {
+                <div><strong>CourierId:</strong> @Auth.CourierId</div>
+            }
+        </div>
+
+        <div class="hero-actions">
+            <button class="btn btn-muted" @onclick="Logout">Se deconnecter</button>
+            <button class="btn btn-accent" @onclick="NavigateAfterAuthentication">Continuer</button>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Connexion</h2>
+
+            <label class="field-label" for="loginEmail">Email</label>
+            <input id="loginEmail" class="form-input" @bind="_loginEmail" />
+
+            <label class="field-label" for="loginPassword">Mot de passe</label>
+            <input id="loginPassword" class="form-input" type="password" @bind="_loginPassword" />
+
+            <div class="hero-actions">
+                <button class="btn btn-accent" @onclick="LoginAsync">Se connecter</button>
+            </div>
+        </article>
+
+        <article class="panel-card">
+            <h2>Inscription Customer</h2>
+            <label class="field-label" for="customerName">Nom complet</label>
+            <input id="customerName" class="form-input" @bind="_customerName" />
+
+            <label class="field-label" for="customerEmail">Email</label>
+            <input id="customerEmail" class="form-input" @bind="_customerEmail" />
+
+            <label class="field-label" for="customerPhone">Telephone</label>
+            <input id="customerPhone" class="form-input" @bind="_customerPhone" />
+
+            <label class="field-label" for="customerPassword">Mot de passe</label>
+            <input id="customerPassword" class="form-input" type="password" @bind="_customerPassword" />
+
+            <label class="field-label" for="street">Rue</label>
+            <input id="street" class="form-input" @bind="_street" />
+
+            <label class="field-label" for="city">Ville</label>
+            <input id="city" class="form-input" @bind="_city" />
+
+            <label class="field-label" for="zip">Code postal</label>
+            <input id="zip" class="form-input" @bind="_zipCode" />
+
+            <div class="hero-actions">
+                <button class="btn btn-accent" @onclick="RegisterCustomerAsync">Creer compte customer</button>
+            </div>
+        </article>
+    </section>
+
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Inscription Courier</h2>
+
+            <label class="field-label" for="courierName">Nom complet</label>
+            <input id="courierName" class="form-input" @bind="_courierName" />
+
+            <label class="field-label" for="courierEmail">Email</label>
+            <input id="courierEmail" class="form-input" @bind="_courierEmail" />
+
+            <label class="field-label" for="courierPhone">Telephone</label>
+            <input id="courierPhone" class="form-input" @bind="_courierPhone" />
+
+            <label class="field-label" for="courierVehicle">Vehicule</label>
+            <select id="courierVehicle" class="form-input" @bind="_courierVehicle">
+                <option value="0">0 - Bicycle</option>
+                <option value="1">1 - Motorbike</option>
+                <option value="2">2 - Car</option>
+                <option value="3">3 - ElectricScooter</option>
+                <option value="4">4 - Walking</option>
+            </select>
+
+            <label class="field-label" for="courierPassword">Mot de passe</label>
+            <input id="courierPassword" class="form-input" type="password" @bind="_courierPassword" />
+
+            <div class="hero-actions">
+                <button class="btn btn-accent" @onclick="RegisterCourierAsync">Creer compte courier</button>
+            </div>
+        </article>
+
+        <article class="panel-card">
+            <h2>Bootstrap Admin</h2>
+            <p>Utilise cette section pour initialiser ou ajouter un compte admin avec la cle de bootstrap.</p>
+
+            <label class="field-label" for="adminName">Nom complet</label>
+            <input id="adminName" class="form-input" @bind="_adminName" />
+
+            <label class="field-label" for="adminEmail">Email</label>
+            <input id="adminEmail" class="form-input" @bind="_adminEmail" />
+
+            <label class="field-label" for="adminPassword">Mot de passe</label>
+            <input id="adminPassword" class="form-input" type="password" @bind="_adminPassword" />
+
+            <label class="field-label" for="adminBootstrap">Bootstrap key</label>
+            <input id="adminBootstrap" class="form-input" type="password" @bind="_adminBootstrapKey" />
+
+            <div class="hero-actions">
+                <button class="btn btn-muted" @onclick="RegisterAdminAsync">Creer compte admin</button>
+            </div>
+        </article>
+    </section>
+}
+
+@if (_message is not null)
+{
+    <p class="success-text">@_message</p>
+}
+
+@if (_error is not null)
+{
+    <p class="error-text">@_error</p>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private string? _message;
+    private string? _error;
+
+    private string _loginEmail = string.Empty;
+    private string _loginPassword = string.Empty;
+
+    private string _customerName = string.Empty;
+    private string _customerEmail = string.Empty;
+    private string _customerPhone = string.Empty;
+    private string _customerPassword = string.Empty;
+    private string _street = string.Empty;
+    private string _city = string.Empty;
+    private string _zipCode = string.Empty;
+
+    private string _courierName = string.Empty;
+    private string _courierEmail = string.Empty;
+    private string _courierPhone = string.Empty;
+    private int _courierVehicle = 1;
+    private string _courierPassword = string.Empty;
+
+    private string _adminName = string.Empty;
+    private string _adminEmail = string.Empty;
+    private string _adminPassword = string.Empty;
+    private string _adminBootstrapKey = string.Empty;
+
+    private async Task LoginAsync()
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.LoginAsync(new LoginRequest(_loginEmail, _loginPassword));
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Connexion impossible.";
+            return;
+        }
+
+        await ApplySessionAsync(result.Value, "Connexion reussie.");
+    }
+
+    private async Task RegisterCustomerAsync()
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.RegisterCustomerAccountAsync(new RegisterCustomerAccountRequest(
+            _customerName,
+            _customerEmail,
+            _customerPhone,
+            _customerPassword,
+            _street,
+            _city,
+            _zipCode));
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Inscription customer impossible.";
+            return;
+        }
+
+        await ApplySessionAsync(result.Value, "Compte customer cree et connecte.");
+    }
+
+    private async Task RegisterCourierAsync()
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.RegisterCourierAccountAsync(new RegisterCourierAccountRequest(
+            _courierName,
+            _courierEmail,
+            _courierPhone,
+            _courierVehicle,
+            _courierPassword));
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Inscription courier impossible.";
+            return;
+        }
+
+        await ApplySessionAsync(result.Value, "Compte courier cree et connecte.");
+    }
+
+    private async Task RegisterAdminAsync()
+    {
+        _message = null;
+        _error = null;
+
+        var result = await ApiClient.RegisterAdminAccountAsync(new RegisterAdminAccountRequest(
+            _adminName,
+            _adminEmail,
+            _adminPassword,
+            _adminBootstrapKey));
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Creation admin impossible.";
+            return;
+        }
+
+        await ApplySessionAsync(result.Value, "Compte admin cree et connecte.");
+    }
+
+    private async Task ApplySessionAsync(AuthTokenResponse token, string successMessage)
+    {
+        Auth.SignIn(token);
+
+        Sim.SetCustomer(token.CustomerId);
+        Sim.SetCourier(token.CourierId);
+
+        if (token.CustomerId.HasValue)
+        {
+            var contextResult = await ApiClient.GetAccountContextAsync();
+            if (contextResult.IsSuccess && contextResult.Value is not null)
+            {
+                var firstAddress = contextResult.Value.Addresses.OrderBy(a => a.Id).FirstOrDefault();
+                Sim.SetAddress(firstAddress?.Id);
+            }
+            else
+            {
+                Sim.SetAddress(null);
+            }
+        }
+        else
+        {
+            Sim.SetAddress(null);
+        }
+
+        _message = successMessage;
+        NavigateAfterAuthentication();
+    }
+
+    private void NavigateAfterAuthentication()
+    {
+        if (!Auth.IsAuthenticated || !Auth.Role.HasValue)
+        {
+            Navigation.NavigateTo("/account");
+            return;
+        }
+
+        var fallback = Auth.Role.Value switch
+        {
+            AppRoleCode.Customer => "/stores",
+            AppRoleCode.Courier => "/orders/board",
+            AppRoleCode.Admin => "/dashboard",
+            _ => "/"
+        };
+
+        var target = fallback;
+        if (!string.IsNullOrWhiteSpace(ReturnUrl)
+            && Uri.TryCreate(ReturnUrl, UriKind.Relative, out _)
+            && ReturnUrl.StartsWith("/", StringComparison.Ordinal)
+            && !ReturnUrl.StartsWith("/account", StringComparison.OrdinalIgnoreCase))
+        {
+            target = ReturnUrl;
+        }
+
+        Navigation.NavigateTo(target);
+    }
+
+    private void Logout()
+    {
+        Cart.Clear();
+        Sim.Reset();
+        Auth.SignOut();
+        _message = "Session deconnectee.";
+    }
+}

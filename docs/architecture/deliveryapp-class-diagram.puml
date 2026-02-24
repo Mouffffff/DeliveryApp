@@ -1,0 +1,142 @@
+@startuml
+title DeliveryApp - Class Diagram (Refactored Backend)
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "API" {
+  class DeliveryEndpoints
+}
+
+package "Application.Services" {
+  interface IOrderService
+  interface ICatalogService
+  interface ICustomerService
+  interface ICourierService
+  interface IPaymentAppService
+  interface IReviewService
+}
+
+package "Application.Repositories" {
+  interface IOrderRepository
+  interface ICatalogRepository
+  interface ICustomerRepository
+  interface ICourierRepository
+  interface IPaymentRepository
+  interface IReviewRepository
+}
+
+package "Application.Validation" {
+  class OrderValidator
+  class CatalogValidator
+  class CustomerValidator
+  class CourierValidator
+  class PaymentValidator
+  class ReviewValidator
+}
+
+package "Service" {
+  class OrderService
+  class CatalogService
+  class CustomerService
+  class CourierService
+  class PaymentAppService
+  class ReviewService
+}
+
+package "Infrastructure" {
+  class AppDbContext
+  class OrderRepository
+  class CatalogRepository
+  class CustomerRepository
+  class CourierRepository
+  class PaymentRepository
+  class ReviewRepository
+}
+
+package "Domain" {
+  class Order
+  class OrderItem
+  class Product
+  class Store
+  class Customer
+  class Address
+  class Courier
+  class Payment
+  class Review
+  enum OrderStatus
+  enum PaymentMethod
+  enum PaymentStatus
+  enum VehicleType
+}
+
+DeliveryEndpoints --> IOrderService
+DeliveryEndpoints --> ICatalogService
+DeliveryEndpoints --> ICustomerService
+DeliveryEndpoints --> ICourierService
+DeliveryEndpoints --> IPaymentAppService
+DeliveryEndpoints --> IReviewService
+
+OrderService ..|> IOrderService
+CatalogService ..|> ICatalogService
+CustomerService ..|> ICustomerService
+CourierService ..|> ICourierService
+PaymentAppService ..|> IPaymentAppService
+ReviewService ..|> IReviewService
+
+OrderService --> IOrderRepository
+OrderService --> ICatalogRepository
+OrderService --> ICustomerRepository
+OrderService --> ICourierRepository
+OrderService --> OrderValidator
+
+CatalogService --> ICatalogRepository
+CatalogService --> ICustomerRepository
+CatalogService --> CatalogValidator
+
+CustomerService --> ICustomerRepository
+CustomerService --> CustomerValidator
+
+CourierService --> ICourierRepository
+CourierService --> IOrderRepository
+CourierService --> CourierValidator
+
+PaymentAppService --> IOrderRepository
+PaymentAppService --> IPaymentRepository
+PaymentAppService --> PaymentValidator
+
+ReviewService --> IOrderRepository
+ReviewService --> IReviewRepository
+ReviewService --> ReviewValidator
+
+OrderRepository ..|> IOrderRepository
+CatalogRepository ..|> ICatalogRepository
+CustomerRepository ..|> ICustomerRepository
+CourierRepository ..|> ICourierRepository
+PaymentRepository ..|> IPaymentRepository
+ReviewRepository ..|> IReviewRepository
+
+OrderRepository --> AppDbContext
+CatalogRepository --> AppDbContext
+CustomerRepository --> AppDbContext
+CourierRepository --> AppDbContext
+PaymentRepository --> AppDbContext
+ReviewRepository --> AppDbContext
+
+Order "1" o-- "1..*" OrderItem
+OrderItem "*" --> "1" Product
+Order "*" --> "1" Store
+Order "*" --> "1" Customer
+Order "*" --> "1" Address : DeliveryAddress
+Order "*" --> "0..1" Courier
+Payment "*" --> "1" Order
+Review "*" --> "1" Order
+Store "*" --> "1" Address : Location
+Address "*" --> "0..1" Customer
+
+Order ..> OrderStatus
+Payment ..> PaymentMethod
+Payment ..> PaymentStatus
+Courier ..> VehicleType
+
+@enduml

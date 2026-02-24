@@ -1,0 +1,117 @@
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3rem;
+    height: 2.4rem;
+    color: white;
+    position: absolute;
+    top: 0.65rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.navbar-toggler:checked {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.top-row {
+    min-height: 3.5rem;
+    background-color: rgba(0, 0, 0, 0.35);
+}
+
+.navbar-brand {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+}
+
+.nav-item {
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem;
+}
+
+.session-box {
+    margin-top: 0.95rem;
+    margin-bottom: 0.5rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    color: #e5f0ff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.82rem;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.btn-logout {
+    margin-top: 0.35rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    padding: 0.28rem 0.52rem;
+    font-size: 0.75rem;
+    width: fit-content;
+}
+
+.btn-logout:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.nav-item:first-of-type {
+    padding-top: 1rem;
+}
+
+.nav-item:last-of-type {
+    padding-bottom: 1rem;
+}
+
+.nav-item ::deep .nav-link {
+    color: #e5f0ff;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+    width: 100%;
+    font-weight: 600;
+}
+
+.nav-item ::deep a.active {
+    background: linear-gradient(90deg, rgba(255, 171, 97, 0.42), rgba(255, 102, 64, 0.42));
+    color: #fff;
+}
+
+.nav-item ::deep .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.nav-ico {
+    display: inline-block;
+}
+
+.nav-scrollable {
+    display: none;
+}
+
+.navbar-toggler:checked ~ .nav-scrollable {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-scrollable {
+        display: block;
+        height: calc(100vh - 3.5rem);
+        overflow-y: auto;
+    }
+}

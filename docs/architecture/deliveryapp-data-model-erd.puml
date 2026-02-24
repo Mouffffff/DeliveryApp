@@ -1,0 +1,101 @@
+@startuml
+title DeliveryApp - Data Model ERD (Current DB)
+left to right direction
+hide methods
+skinparam linetype ortho
+
+entity "Customers" as Customers {
+  *Id : int <<PK>>
+  --
+  FullName : nvarchar
+  Email : nvarchar
+  PhoneNumber : nvarchar
+}
+
+entity "Addresses" as Addresses {
+  *Id : int <<PK>>
+  --
+  Street : nvarchar(200)
+  City : nvarchar
+  ZipCode : nvarchar
+  CustomerId : int <<FK nullable>>
+}
+
+entity "Stores" as Stores {
+  *Id : int <<PK>>
+  --
+  Name : nvarchar(150)
+  Category : nvarchar
+  AddressId : int <<FK>>
+}
+
+entity "Products" as Products {
+  *Id : int <<PK>>
+  --
+  Name : nvarchar
+  Price : decimal(18,2)
+  StoreId : int <<FK>>
+}
+
+entity "Couriers" as Couriers {
+  *Id : int <<PK>>
+  --
+  FullName : nvarchar
+  PhoneNumber : nvarchar
+  Vehicle : int
+  IsAvailable : bit
+}
+
+entity "Orders" as Orders {
+  *Id : int <<PK>>
+  --
+  OrderDate : datetime2
+  TotalPrice : decimal(18,2)
+  Status : int
+  CustomerId : int <<FK>>
+  StoreId : int <<FK>>
+  DeliveryAddressId : int <<FK>>
+  CourierId : int <<FK nullable>>
+}
+
+entity "OrderItems" as OrderItems {
+  *Id : int <<PK>>
+  --
+  OrderId : int <<FK>>
+  ProductId : int <<FK>>
+  Quantity : int
+  UnitPrice : decimal(18,2)
+}
+
+entity "Payments" as Payments {
+  *Id : int <<PK>>
+  --
+  OrderId : int
+  Amount : decimal(18,2)
+  PaymentDate : datetime2
+  Method : int
+  Status : int
+}
+
+entity "Reviews" as Reviews {
+  *Id : int <<PK>>
+  --
+  OrderId : int
+  Rating : int
+  Comment : nvarchar
+  CreatedAt : datetime2
+}
+
+Customers ||--o{ Addresses : has
+Addresses ||--o{ Stores : location
+Stores ||--o{ Products : offers
+Customers ||--o{ Orders : places
+Stores ||--o{ Orders : receives
+Addresses ||--o{ Orders : delivers_to
+Couriers ||--o{ Orders : assigned_to
+Orders ||--|{ OrderItems : contains
+Products ||--o{ OrderItems : line_product
+Orders ||--o{ Payments : paid_by
+Orders ||--o{ Reviews : reviewed_by
+
+@enduml

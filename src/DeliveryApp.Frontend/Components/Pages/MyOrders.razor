@@ -1,0 +1,108 @@
+@page "/my-orders"
+
+@inject DeliveryApiClient ApiClient
+@inject AuthSessionState Auth
+@inject AppContextState Sim
+
+<PageTitle>Mes commandes</PageTitle>
+
+<h1>Mes commandes</h1>
+
+@if (!Auth.IsInRole(AppRoleCode.Customer))
+{
+    <section class="panel-card">
+        <p>Cette page est reservee aux customers.</p>
+        <a class="btn btn-accent" href="/account">Connexion</a>
+    </section>
+}
+else
+{
+    <section class="panel-card">
+        <div class="line-actions">
+            <p><strong>CustomerId:</strong> @(Auth.CustomerId?.ToString() ?? "-")</p>
+            <button class="btn btn-muted" @onclick="LoadAsync">Actualiser</button>
+        </div>
+
+        @if (_error is not null)
+        {
+            <p class="error-text">@_error</p>
+        }
+    </section>
+
+    <section class="panel-card">
+        @if (_loading)
+        {
+            <p>Chargement de tes commandes...</p>
+        }
+        else if (_orders.Count == 0)
+        {
+            <p>Aucune commande pour ce client.</p>
+            <a class="btn btn-accent" href="/stores">Commander maintenant</a>
+        }
+        else
+        {
+            <div class="list-stack">
+                @foreach (var order in _orders)
+                {
+                    <div class="line-item board-row">
+                        <div>
+                            <strong>Commande #@order.Id</strong>
+                            <div>Statut: <span class="status-pill">@order.Status</span></div>
+                            <div>Total: @order.TotalPrice.ToString("0.00") EUR</div>
+                            <div>Le: @order.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</div>
+                            @if (order.CourierId.HasValue)
+                            {
+                                <div><strong>Livreur:</strong> @(string.IsNullOrWhiteSpace(order.CourierName) ? $"#{order.CourierId.Value}" : order.CourierName) (@(order.CourierVehicle ?? "Vehicule inconnu"))</div>
+                                <div><strong>Telephone livreur:</strong> @(string.IsNullOrWhiteSpace(order.CourierPhoneNumber) ? "Numero indisponible" : order.CourierPhoneNumber)</div>
+                            }
+                            else
+                            {
+                                <div><strong>Livreur:</strong> Pas encore affecte</div>
+                            }
+                        </div>
+                        <div class="line-actions">
+                            <a class="btn btn-accent" href="/orders/@order.Id">Suivre</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<DeliveryDto> _orders = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        _orders = [];
+
+        var result = await ApiClient.GetMyOrdersAsync();
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Impossible de charger les commandes.";
+            _loading = false;
+            return;
+        }
+
+        _orders = (result.Value ?? [])
+            .OrderByDescending(o => o.Id)
+            .ToList();
+
+        if (_orders.Count > 0)
+        {
+            Sim.SetOrder(_orders[0].Id);
+        }
+
+        _loading = false;
+    }
+}

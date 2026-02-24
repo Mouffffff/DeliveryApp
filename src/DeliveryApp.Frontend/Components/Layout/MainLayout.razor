@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <div>
+                <strong>DeliveryApp</strong>
+                <span class="top-row-subtitle">Blazor + API .NET</span>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Une erreur non geree est survenue.
+    <a href="." class="reload">Recharger</a>
+    <span class="dismiss">x</span>
+</div>

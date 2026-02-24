@@ -1,0 +1,282 @@
+@page "/orders/board"
+
+@inject DeliveryApiClient ApiClient
+@inject AppContextState Sim
+
+<PageTitle>Operations commandes</PageTitle>
+
+<h1>Operations commandes (livreur)</h1>
+
+<section class="panel-card">
+    <div class="line-actions">
+        <label class="field-label" for="statusFilter">Filtre statut</label>
+        <select id="statusFilter" class="form-input status-filter" value="@_statusFilter" @onchange="OnFilterChangedAsync">
+            <option value="-1">Tous</option>
+            @foreach (var status in Enum.GetValues<OrderStatusCode>())
+            {
+                <option value="@((int)status)">@((int)status) - @status</option>
+            }
+        </select>
+
+        <button class="btn btn-muted" @onclick="LoadAsync">Actualiser</button>
+    </div>
+
+    @if (_message is not null)
+    {
+        <p class="success-text">@_message</p>
+    }
+
+    @if (_error is not null)
+    {
+        <p class="error-text">@_error</p>
+    }
+</section>
+
+<section class="panel-grid">
+    <article class="panel-card">
+        <h2>Couriers disponibles</h2>
+        @if (_availableCouriers.Count == 0)
+        {
+            <p>Aucun courier disponible.</p>
+        }
+        else
+        {
+            <div class="mini-list">
+                @foreach (var courier in _availableCouriers)
+                {
+                    <p>#@courier.Id - @courier.FullName (@courier.Vehicle)</p>
+                }
+            </div>
+        }
+    </article>
+
+    <article class="panel-card">
+        <h2>Contexte courant</h2>
+        <p>CustomerId: <strong>@(Sim.SelectedCustomerId?.ToString() ?? "-")</strong></p>
+        <p>AddressId: <strong>@(Sim.SelectedAddressId?.ToString() ?? "-")</strong></p>
+        <p>CourierId: <strong>@(Sim.SelectedCourierId?.ToString() ?? "-")</strong></p>
+        <p>OrderId: <strong>@(Sim.CurrentOrderId?.ToString() ?? "-")</strong></p>
+    </article>
+</section>
+
+<section class="panel-card">
+    <h2>Commandes</h2>
+
+    @if (_loading)
+    {
+        <p>Chargement des commandes...</p>
+    }
+    else if (_orders.Count == 0)
+    {
+        <p>Aucune commande pour ce filtre.</p>
+    }
+    else
+    {
+        <div class="list-stack">
+            @foreach (var order in _orders.OrderByDescending(o => o.Id))
+            {
+                <div class="line-item board-row">
+                    <div>
+                        <strong>Commande #@order.Id</strong>
+                        <div>Statut: @order.Status | Total: @order.TotalPrice.ToString("0.00") EUR</div>
+                        <div><strong>Store:</strong> @order.StoreName (#@order.StoreId)</div>
+                        <div><strong>Pickup:</strong> @FormatAddress(order.StoreStreet, order.StoreCity, order.StoreZipCode)</div>
+                        <div><strong>Client:</strong> @order.CustomerName (#@order.CustomerId)</div>
+                        <div>
+                            <strong>Telephone client:</strong> @FormatPhone(order.CustomerPhoneNumber)
+                            @if (!string.IsNullOrWhiteSpace(order.CustomerPhoneNumber))
+                            {
+                                <a class="btn btn-muted" href="@BuildTelUri(order.CustomerPhoneNumber)">Appeler</a>
+                            }
+                        </div>
+                        <div><strong>Livraison:</strong> @FormatAddress(order.DeliveryStreet, order.DeliveryCity, order.DeliveryZipCode)</div>
+                    </div>
+
+                    <div class="line-actions wrap-actions">
+                        <input class="qty-input" type="number" min="1" value="@GetCourier(order.Id)" @onchange="(e => SetCourier(order.Id, e))" title="CourierId" />
+                        <button class="btn btn-muted" @onclick="() => AssignCourierAsync(order.Id)">Affecter</button>
+
+                        <select class="form-input compact-select" value="@GetStatus(order.Id)" @onchange="(e => SetStatus(order.Id, e))">
+                            @foreach (var status in Enum.GetValues<OrderStatusCode>())
+                            {
+                                <option value="@((int)status)">@((int)status)</option>
+                            }
+                        </select>
+                        <button class="btn btn-muted" @onclick="() => UpdateStatusAsync(order.Id)">Maj statut</button>
+
+                        <a class="btn btn-accent" href="/orders/@order.Id">Suivi</a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private string? _message;
+
+    private int _statusFilter = -1;
+
+    private List<DeliveryDto> _orders = [];
+    private List<CourierDto> _availableCouriers = [];
+
+    private readonly Dictionary<int, int> _courierByOrder = [];
+    private readonly Dictionary<int, int> _statusByOrder = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        Task<ApiResult<IReadOnlyList<DeliveryDto>>> ordersTask = _statusFilter >= 0
+            ? ApiClient.GetOrdersByStatusAsync(_statusFilter)
+            : ApiClient.GetOrdersAsync();
+
+        var couriersTask = ApiClient.GetAvailableCouriersAsync();
+
+        await Task.WhenAll(ordersTask, couriersTask);
+
+        var ordersResult = await ordersTask;
+        var couriersResult = await couriersTask;
+
+        if (!ordersResult.IsSuccess)
+        {
+            _error = ordersResult.Error ?? "Impossible de charger les commandes.";
+            _orders = [];
+        }
+        else
+        {
+            _orders = ordersResult.Value?.ToList() ?? [];
+            foreach (var order in _orders)
+            {
+                if (!_statusByOrder.ContainsKey(order.Id))
+                {
+                    _statusByOrder[order.Id] = ParseStatus(order.Status);
+                }
+
+                if (!_courierByOrder.ContainsKey(order.Id))
+                {
+                    _courierByOrder[order.Id] = Sim.SelectedCourierId ?? 0;
+                }
+            }
+        }
+
+        _availableCouriers = couriersResult.IsSuccess ? (couriersResult.Value?.ToList() ?? []) : [];
+
+        _loading = false;
+    }
+
+    private int ParseStatus(string status)
+    {
+        return Enum.TryParse<OrderStatusCode>(status, true, out var parsed)
+            ? (int)parsed
+            : 0;
+    }
+
+    private int GetCourier(int orderId) => _courierByOrder.TryGetValue(orderId, out var value) ? value : 0;
+
+    private int GetStatus(int orderId) => _statusByOrder.TryGetValue(orderId, out var value) ? value : 0;
+
+    private void SetCourier(int orderId, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var courierId) || courierId < 0)
+        {
+            courierId = 0;
+        }
+
+        _courierByOrder[orderId] = courierId;
+    }
+
+    private void SetStatus(int orderId, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var status) || status < 0)
+        {
+            status = 0;
+        }
+
+        _statusByOrder[orderId] = status;
+    }
+
+    private async Task AssignCourierAsync(int orderId)
+    {
+        _message = null;
+        _error = null;
+
+        var courierId = GetCourier(orderId);
+        if (courierId <= 0)
+        {
+            _error = "Renseigne un CourierId valide avant affectation.";
+            return;
+        }
+
+        var result = await ApiClient.AssignCourierAsync(orderId, courierId);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        Sim.SetOrder(orderId);
+        Sim.SetCourier(courierId);
+        _message = $"Courier {courierId} affecte a la commande {orderId}.";
+        await LoadAsync();
+    }
+
+    private async Task UpdateStatusAsync(int orderId)
+    {
+        _message = null;
+        _error = null;
+
+        var status = GetStatus(orderId);
+        int? courierId = GetCourier(orderId) > 0 ? GetCourier(orderId) : null;
+
+        var result = await ApiClient.UpdateOrderAsync(orderId, status, courierId);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error;
+            return;
+        }
+
+        Sim.SetOrder(orderId);
+        if (courierId.HasValue)
+        {
+            Sim.SetCourier(courierId.Value);
+        }
+
+        _message = $"Commande {orderId} mise a jour (status={status}).";
+        await LoadAsync();
+    }
+
+    private async Task OnFilterChangedAsync(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var value))
+        {
+            value = -1;
+        }
+
+        _statusFilter = value;
+        await LoadAsync();
+    }
+
+    private static string FormatAddress(string street, string city, string zipCode)
+    {
+        var parts = new[] { street, city, zipCode }
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim());
+
+        return parts.Any() ? string.Join(", ", parts) : "Adresse indisponible";
+    }
+
+    private static string FormatPhone(string phone) =>
+        string.IsNullOrWhiteSpace(phone) ? "Numero indisponible" : phone;
+
+    private static string BuildTelUri(string phone) =>
+        $"tel:{new string(phone.Where(c => char.IsDigit(c) || c == '+').ToArray())}";
+}

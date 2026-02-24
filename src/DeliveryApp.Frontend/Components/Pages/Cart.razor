@@ -1,0 +1,278 @@
+@page "/cart"
+
+@inject CartState Basket
+@inject DeliveryApiClient ApiClient
+@inject NavigationManager Navigation
+@inject AppContextState Sim
+@inject AuthSessionState Auth
+
+<PageTitle>Panier</PageTitle>
+
+<h1>Panier et creation de commande</h1>
+
+@if (Basket.Lines.Count == 0)
+{
+    <section class="panel-card">
+        <p>Ton panier est vide.</p>
+        <a class="btn btn-accent" href="/stores">Aller au catalogue</a>
+    </section>
+}
+else
+{
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Articles</h2>
+            <div class="list-stack">
+                @foreach (var line in Basket.Lines)
+                {
+                    <div class="line-item">
+                        <div>
+                            <strong>@line.ProductName</strong>
+                            <div>@line.UnitPrice.ToString("0.00") EUR</div>
+                        </div>
+                        <div class="line-actions">
+                            <input class="qty-input" type="number" min="1" value="@line.Quantity" @onchange="(e => UpdateLineQuantity(line.ProductId, e))" />
+                            <button class="btn btn-muted" @onclick="() => Basket.Remove(line.ProductId)">Retirer</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </article>
+
+        <article class="panel-card">
+            <h2>Checkout</h2>
+
+            <div class="summary-block">
+                <div><strong>Client:</strong> @(Auth.DisplayName ?? "N/A")</div>
+                <div><strong>CustomerId:</strong> @(_customerId > 0 ? _customerId.ToString() : "N/A")</div>
+            </div>
+
+            <label class="field-label" for="addressId">Adresse de livraison</label>
+            <select id="addressId" class="form-input" value="@_deliveryAddressId" @onchange="OnAddressChanged" disabled="@(_addressOptions.Count == 0)">
+                @if (_addressOptions.Count == 0)
+                {
+                    <option value="0">Aucune adresse disponible</option>
+                }
+                else
+                {
+                    @foreach (var address in _addressOptions)
+                    {
+                        <option value="@address.Id">@address.Id - @address.Street, @address.City</option>
+                    }
+                }
+            </select>
+
+            <div class="section-split">
+                <h3>Ajouter une nouvelle adresse</h3>
+                <label class="field-label" for="newStreet">Rue</label>
+                <input id="newStreet" class="form-input" @bind="_newStreet" />
+
+                <label class="field-label" for="newCity">Ville</label>
+                <input id="newCity" class="form-input" @bind="_newCity" />
+
+                <label class="field-label" for="newZip">Code postal</label>
+                <input id="newZip" class="form-input" @bind="_newZipCode" />
+
+                @if (_isAddingAddress)
+                {
+                    <p>Ajout d'adresse en cours...</p>
+                }
+                else
+                {
+                    <button class="btn btn-muted" @onclick="CreateAndSelectAddressAsync">Ajouter et utiliser cette adresse</button>
+                }
+
+                @if (_addressSuccess is not null)
+                {
+                    <p class="success-text">@_addressSuccess</p>
+                }
+            </div>
+
+            <div class="summary-block">
+                <div>Total articles: <strong>@Basket.TotalItems</strong></div>
+                <div>Total commande: <strong>@Basket.TotalAmount.ToString("0.00") EUR</strong></div>
+                <div>StoreId: <strong>@(Basket.StoreId?.ToString() ?? "N/A")</strong></div>
+            </div>
+
+            @if (_error is not null)
+            {
+                <p class="error-text">@_error</p>
+            }
+
+            @if (_isSubmitting)
+            {
+                <p>Creation de commande en cours...</p>
+            }
+            else
+            {
+                <button class="btn btn-accent" @onclick="CreateOrderAsync">Creer la commande</button>
+                <button class="btn btn-muted" @onclick="Basket.Clear">Vider le panier</button>
+            }
+        </article>
+    </section>
+}
+
+@code {
+    private int _customerId;
+    private int _deliveryAddressId;
+    private bool _isSubmitting;
+    private bool _isAddingAddress;
+    private string? _error;
+    private string? _addressSuccess;
+    private string _newStreet = string.Empty;
+    private string _newCity = string.Empty;
+    private string _newZipCode = string.Empty;
+
+    private List<AddressDto> _addressOptions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContextAsync();
+    }
+
+    private async Task LoadContextAsync()
+    {
+        _error = null;
+
+        if (!Auth.IsInRole(AppRoleCode.Customer) || !Auth.CustomerId.HasValue)
+        {
+            _error = "Session customer invalide.";
+            return;
+        }
+
+        _customerId = Auth.CustomerId.Value;
+        Sim.SetCustomer(_customerId);
+
+        var addressesResult = await ApiClient.GetMyAddressesAsync();
+        if (!addressesResult.IsSuccess)
+        {
+            _error = addressesResult.Error ?? "Impossible de charger les adresses client.";
+            return;
+        }
+
+        _addressOptions = addressesResult.Value?.OrderBy(a => a.Id).ToList() ?? [];
+        if (_addressOptions.Count > 0)
+        {
+            _deliveryAddressId = Sim.SelectedAddressId.HasValue && _addressOptions.Any(a => a.Id == Sim.SelectedAddressId.Value)
+                ? Sim.SelectedAddressId.Value
+                : _addressOptions[0].Id;
+            Sim.SetAddress(_deliveryAddressId);
+        }
+        else
+        {
+            _deliveryAddressId = 0;
+            Sim.SetAddress(null);
+        }
+
+    }
+
+    private void OnAddressChanged(ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var addressId))
+        {
+            addressId = 0;
+        }
+
+        _deliveryAddressId = addressId;
+        Sim.SetAddress(_deliveryAddressId > 0 ? _deliveryAddressId : null);
+    }
+
+    private void UpdateLineQuantity(int productId, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var qty))
+        {
+            qty = 1;
+        }
+
+        Basket.SetQuantity(productId, qty);
+    }
+
+    private async Task CreateOrderAsync()
+    {
+        _error = null;
+
+        if (Basket.StoreId is null)
+        {
+            _error = "Store invalide. Retourne au catalogue.";
+            return;
+        }
+
+        if (_customerId <= 0)
+        {
+            _error = "Aucun customer actif.";
+            return;
+        }
+
+        if (_deliveryAddressId <= 0)
+        {
+            _error = "Selectionne une adresse de livraison valide.";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        var request = new CreateOrderRequest
+        {
+            CustomerId = _customerId,
+            StoreId = Basket.StoreId.Value,
+            DeliveryAddressId = _deliveryAddressId,
+            Items = Basket.BuildOrderItems()
+        };
+
+        var createResult = await ApiClient.CreateOrderAsync(request);
+        _isSubmitting = false;
+
+        if (!createResult.IsSuccess || createResult.Value is null)
+        {
+            _error = createResult.Error ?? "La commande n'a pas pu etre creee.";
+            return;
+        }
+
+        var orderId = createResult.Value.Id;
+        Sim.SetOrder(orderId);
+        Basket.Clear();
+        Navigation.NavigateTo($"/orders/{orderId}");
+    }
+
+    private async Task CreateAndSelectAddressAsync()
+    {
+        _error = null;
+        _addressSuccess = null;
+
+        if (string.IsNullOrWhiteSpace(_newStreet) ||
+            string.IsNullOrWhiteSpace(_newCity) ||
+            string.IsNullOrWhiteSpace(_newZipCode))
+        {
+            _error = "Renseigne Street, City et ZipCode pour la nouvelle adresse.";
+            return;
+        }
+
+        _isAddingAddress = true;
+
+        var result = await ApiClient.CreateMyAddressAsync(new CreateAddressRequest(
+            _newStreet,
+            _newCity,
+            _newZipCode,
+            null));
+
+        _isAddingAddress = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _error = result.Error ?? "Impossible d'ajouter l'adresse.";
+            return;
+        }
+
+        var created = result.Value;
+        _addressOptions.Add(created);
+        _addressOptions = _addressOptions.OrderBy(a => a.Id).ToList();
+
+        _deliveryAddressId = created.Id;
+        Sim.SetAddress(created.Id);
+
+        _newStreet = string.Empty;
+        _newCity = string.Empty;
+        _newZipCode = string.Empty;
+        _addressSuccess = $"Adresse ajoutee et selectionnee (ID: {created.Id}).";
+    }
+}

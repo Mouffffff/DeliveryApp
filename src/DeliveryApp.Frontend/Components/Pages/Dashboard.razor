@@ -1,0 +1,83 @@
+@page "/dashboard"
+@implements IDisposable
+
+@inject AppContextState Sim
+@inject DeliveryApiClient ApiClient
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Dashboard operationnel</h1>
+<p>Suivi des etapes cles pour exploiter l'application de bout en bout.</p>
+
+<section class="panel-grid">
+    <article class="panel-card">
+        <h2>Contexte courant</h2>
+        <p>CustomerId: <strong>@(Sim.SelectedCustomerId?.ToString() ?? "-")</strong></p>
+        <p>AddressId: <strong>@(Sim.SelectedAddressId?.ToString() ?? "-")</strong></p>
+        <p>CourierId: <strong>@(Sim.SelectedCourierId?.ToString() ?? "-")</strong></p>
+        <p>OrderId: <strong>@(Sim.CurrentOrderId?.ToString() ?? "-")</strong></p>
+        @if (_healthError is not null)
+        {
+            <p class="error-text">API: @_healthError</p>
+        }
+        else if (_health is not null)
+        {
+            <p class="success-text">API: @_health.Status</p>
+        }
+    </article>
+
+    <article class="panel-card">
+        <h2>Progression</h2>
+        <ol class="clean-list">
+            <li class="@(Sim.SelectedCustomerId.HasValue && Sim.SelectedAddressId.HasValue ? "success-text" : string.Empty)">Client + adresse + coursier prets</li>
+            <li class="@(CartStepDone ? "success-text" : string.Empty)">Selection store et panier</li>
+            <li class="@(Sim.CurrentOrderId.HasValue ? "success-text" : string.Empty)">Commande creee</li>
+            <li class="@(Sim.SelectedCourierId.HasValue ? "success-text" : string.Empty)">Courier affecte et statuts avances</li>
+            <li>Paiement + avis</li>
+        </ol>
+    </article>
+</section>
+
+<section class="panel-card">
+    <h2>Actions rapides</h2>
+    <div class="hero-actions">
+        <a class="btn btn-accent" href="/admin">1. Administration</a>
+        <a class="btn btn-muted" href="/account">2. Gestion des comptes</a>
+        @if (Sim.CurrentOrderId is > 0)
+        {
+            <a class="btn btn-muted" href="/orders/@Sim.CurrentOrderId">3. Consulter la derniere commande</a>
+        }
+    </div>
+</section>
+
+@code {
+    private HealthResponse? _health;
+    private string? _healthError;
+
+    private bool CartStepDone => Sim.SelectedCustomerId.HasValue && Sim.SelectedAddressId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Sim.Changed += OnSimChanged;
+
+        var healthResult = await ApiClient.GetHealthAsync();
+        if (healthResult.IsSuccess)
+        {
+            _health = healthResult.Value;
+        }
+        else
+        {
+            _healthError = healthResult.Error ?? "Unavailable";
+        }
+    }
+
+    private void OnSimChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Sim.Changed -= OnSimChanged;
+    }
+}

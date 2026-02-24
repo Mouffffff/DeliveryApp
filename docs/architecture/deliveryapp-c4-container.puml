@@ -1,0 +1,32 @@
+@startuml
+title DeliveryApp - C4 Container
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Customer / Courier / Store / Admin" as User
+
+rectangle "DeliveryApp System" {
+  rectangle "DeliveryApp.Api\n(ASP.NET Core Minimal API)" as Api
+  rectangle "Application Services\n(Order/Catalog/Customer/Courier/Payment/Review)" as Service
+  rectangle "DeliveryApp.Application\n(Contracts, DTOs, Interfaces)" as Application
+  rectangle "DeliveryApp.Infrastructure\n(EF Core + Specialized Repositories)" as Infrastructure
+  database "Azure SQL Database" as SqlDb
+}
+
+User --> Api : HTTPS JSON
+Api --> Service : command/query calls
+Service --> Application : DTOs + interfaces
+Service --> Infrastructure : repository abstractions
+Infrastructure --> SqlDb : EF Core + SQL
+
+note bottom of Api
+Endpoints:
+- /api/orders
+- /api/stores
+- /api/couriers/available
+- /api/orders/{id}/payments
+- /api/orders/{id}/assign-courier
+- /api/modules/*
+end note
+
+@enduml

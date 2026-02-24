@@ -1,0 +1,92 @@
+@page "/"
+
+@inject DeliveryApiClient ApiClient
+@inject AuthSessionState Auth
+@inject AppContextState Sim
+
+<PageTitle>DeliveryApp Front</PageTitle>
+
+<section class="hero">
+    <p class="eyebrow">Frontend role-based</p>
+    <h1>DeliveryApp, plateforme de livraison</h1>
+    <p class="subtitle">
+        Connexion JWT + roles Customer/Courier/Admin avec parcours dedies.
+    </p>
+    <div class="hero-actions">
+        @if (!Auth.IsAuthenticated)
+        {
+            <a class="btn btn-accent" href="/account">Se connecter</a>
+        }
+        else if (Auth.IsInRole(AppRoleCode.Customer))
+        {
+            <a class="btn btn-accent" href="/stores">Commander</a>
+            <a class="btn btn-muted" href="/my-orders">Mes commandes</a>
+            <a class="btn btn-muted" href="/cart">Mon panier</a>
+        }
+        else if (Auth.IsInRole(AppRoleCode.Courier))
+        {
+            <a class="btn btn-accent" href="/orders/board">Operations commandes</a>
+            <a class="btn btn-muted" href="/orders">Rechercher commande</a>
+        }
+        else
+        {
+            <a class="btn btn-accent" href="/dashboard">Dashboard</a>
+            <a class="btn btn-muted" href="/admin">Administration</a>
+        }
+    </div>
+</section>
+
+<section class="panel-grid">
+    <article class="panel-card">
+        <h2>Etat API</h2>
+        @if (_loading)
+        {
+            <p>Verification en cours...</p>
+        }
+        else if (_healthError is not null)
+        {
+            <p class="error-text">@_healthError</p>
+        }
+        else if (_health is not null)
+        {
+            <p><strong>@_health.Status</strong></p>
+            <p>Derniere verification: @_health.Timestamp.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</p>
+        }
+    </article>
+
+    <article class="panel-card">
+        <h2>Session</h2>
+        <p><strong>Authentifie:</strong> @(Auth.IsAuthenticated ? "Oui" : "Non")</p>
+        <p><strong>Role:</strong> @(Auth.Role?.ToString() ?? "-")</p>
+        <p><strong>User:</strong> @(Auth.DisplayName ?? "-")</p>
+        <p><strong>CustomerId:</strong> @(Auth.CustomerId?.ToString() ?? "-")</p>
+        <p><strong>CourierId:</strong> @(Auth.CourierId?.ToString() ?? "-")</p>
+    </article>
+
+    <article class="panel-card">
+        <h2>Contexte utilisateur</h2>
+        <p><strong>Derniere commande:</strong> @(Sim.CurrentOrderId?.ToString() ?? "-")</p>
+        <p><strong>Adresse active:</strong> @(Sim.SelectedAddressId?.ToString() ?? "-")</p>
+    </article>
+</section>
+
+@code {
+    private HealthResponse? _health;
+    private string? _healthError;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ApiClient.GetHealthAsync();
+        if (result.IsSuccess)
+        {
+            _health = result.Value;
+        }
+        else
+        {
+            _healthError = result.Error ?? "Impossible de joindre l'API.";
+        }
+
+        _loading = false;
+    }
+}

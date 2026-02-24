@@ -1,0 +1,29 @@
+@startuml
+title DeliveryApp - C4 Context
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Customer" as Customer
+actor "Courier" as Courier
+actor "Store Manager" as StoreManager
+actor "Admin" as Admin
+
+rectangle "DeliveryApp Platform" as DeliveryApp {
+  usecase "Place and track orders" as UC1
+  usecase "Accept delivery and update status" as UC2
+  usecase "Manage store catalog and availability" as UC3
+  usecase "Monitor operations and incidents" as UC4
+}
+
+database "Azure SQL Database" as AzureSql
+cloud "Payment Provider\n(Future Integration)" as PaymentProvider
+
+Customer --> UC1
+Courier --> UC2
+StoreManager --> UC3
+Admin --> UC4
+
+DeliveryApp --> AzureSql : read/write data
+DeliveryApp --> PaymentProvider : payment authorization
+
+@enduml

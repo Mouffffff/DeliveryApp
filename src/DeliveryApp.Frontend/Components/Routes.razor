@@ -1,0 +1,82 @@
+@inject NavigationManager Navigation
+@inject AuthSessionState Auth
+
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        @if (IsPublicPage(routeData))
+        {
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        }
+        else if (!Auth.IsAuthenticated)
+        {
+            <RedirectToAccount ReturnUrl="@GetCurrentPath()" />
+        }
+        else if (!HasRequiredRole(routeData))
+        {
+            <RedirectToForbidden />
+        }
+        else
+        {
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        }
+    </Found>
+</Router>
+
+@code {
+    private static bool IsPublicPage(RouteData routeData)
+    {
+        var page = routeData.PageType;
+        return page == typeof(Pages.Account)
+               || page == typeof(Pages.Forbidden)
+               || page == typeof(Pages.NotFound);
+    }
+
+    private bool HasRequiredRole(RouteData routeData)
+    {
+        var roles = GetAllowedRoles(routeData.PageType);
+        if (roles is null || roles.Count == 0)
+        {
+            return true;
+        }
+
+        if (!Auth.Role.HasValue)
+        {
+            return false;
+        }
+
+        return roles.Contains(Auth.Role.Value);
+    }
+
+    private static HashSet<AppRoleCode>? GetAllowedRoles(Type pageType)
+    {
+        if (pageType == typeof(Pages.Stores) ||
+            pageType == typeof(Pages.StoreDetails) ||
+            pageType == typeof(Pages.Cart) ||
+            pageType == typeof(Pages.MyOrders))
+        {
+            return new HashSet<AppRoleCode> { AppRoleCode.Customer };
+        }
+
+        if (pageType == typeof(Pages.OrdersBoard) ||
+            pageType == typeof(Pages.OrderLookup))
+        {
+            return new HashSet<AppRoleCode> { AppRoleCode.Courier };
+        }
+
+        if (pageType == typeof(Pages.Admin) ||
+            pageType == typeof(Pages.Dashboard))
+        {
+            return new HashSet<AppRoleCode> { AppRoleCode.Admin };
+        }
+
+        return null;
+    }
+
+    private string GetCurrentPath()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        return string.IsNullOrWhiteSpace(relativePath) ? "/" : $"/{relativePath}";
+    }
+}

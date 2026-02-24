@@ -1,0 +1,51 @@
+@startuml
+title DeliveryApp - Sequence: Create Order
+autonumber
+
+actor Client
+participant "DeliveryEndpoints" as API
+participant "OrderService" as Service
+participant "OrderValidator" as Validators
+participant "IOrderRepository / ICatalogRepository / ICustomerRepository" as Repo
+database "SQL Server" as DB
+
+Client -> API: POST /api/orders (CreateDeliveryDto)
+API -> Service: CreateAsync(dto)
+Service -> Validators: Validate(dto)
+Validators --> Service: (ok/error)
+
+alt validation failed
+  Service --> API: ServiceResult.Failure(400)
+  API --> Client: 400 ProblemDetails
+else validation ok
+  Service -> Repo: CustomerExistsAsync
+  Repo -> DB: SELECT Customer
+  DB --> Repo: result
+  Repo --> Service: bool
+
+  Service -> Repo: StoreExistsAsync / AddressExistsAsync
+  Repo -> DB: SELECT Store + Address
+  DB --> Repo: result
+  Repo --> Service: bool/bool
+
+  Service -> Repo: GetProductsByIdsAsync(ids)
+  Repo -> DB: SELECT Products
+  DB --> Repo: products
+  Repo --> Service: products
+
+  Service -> Service: NormalizeItems + compute total
+  Service -> Repo: AddAsync(order + orderItems)
+  Repo -> DB: INSERT Orders + OrderItems
+  DB --> Repo: created
+  Repo --> Service: Order
+
+  Service -> Repo: GetByIdAsync(orderId)
+  Repo -> DB: SELECT Order + Includes
+  DB --> Repo: order aggregate
+  Repo --> Service: order aggregate
+
+  Service --> API: ServiceResult.Success(DeliveryDto)
+  API --> Client: 201 Created
+end
+
+@enduml

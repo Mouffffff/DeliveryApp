@@ -1,0 +1,8 @@
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\EmbeddedAttribute.cs
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\ValidatableTypeAttribute.cs
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\rpswa.dswa.cache.json
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\DeliveryApp.Frontend.GeneratedMSBuildEditorConfig.editorconfig
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\DeliveryApp.Frontend.AssemblyInfoInputs.cache
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\DeliveryApp.Frontend.AssemblyInfo.cs
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\DeliveryApp.Frontend.csproj.CoreCompileInputs.cache
+C:\Github\DeliveryApp\src\DeliveryApp.Frontend\obj_temp\Debug\net10.0\DeliveryApp.Frontend.MvcApplicationPartsAssemblyInfo.cache

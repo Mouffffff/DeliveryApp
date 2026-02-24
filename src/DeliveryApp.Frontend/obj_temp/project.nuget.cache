@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "C9/HaFNQf8A=",
+  "success": true,
+  "projectFilePath": "C:\\Github\\DeliveryApp\\src\\DeliveryApp.Frontend\\DeliveryApp.Frontend.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\etame\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.3\\microsoft.aspnetcore.app.internal.assets.10.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

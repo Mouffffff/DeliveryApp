@@ -1,0 +1,149 @@
+@page "/stores/{StoreId:int}"
+
+@inject DeliveryApiClient ApiClient
+@inject CartState Cart
+
+<PageTitle>Detail store</PageTitle>
+
+@if (_loading)
+{
+    <p>Chargement du store...</p>
+}
+else if (_error is not null)
+{
+    <p class="error-text">@_error</p>
+    <a class="btn btn-muted" href="/stores">Retour a la liste</a>
+}
+else if (_store is not null)
+{
+    <h1>@_store.Name</h1>
+
+    <section class="panel-grid">
+        <article class="panel-card">
+            <h2>Informations du store</h2>
+            <div class="summary-block">
+                <div><strong>StoreId:</strong> @_store.Id</div>
+                <div><strong>Categorie:</strong> @_store.Category</div>
+                <div><strong>Adresse:</strong> @_store.Street, @_store.City @_store.ZipCode</div>
+            </div>
+
+            <div class="hero-actions">
+                <a class="btn btn-muted" href="/stores">Retour aux stores</a>
+                <a class="btn btn-accent" href="/cart">Aller au panier (@Cart.TotalItems)</a>
+            </div>
+        </article>
+
+        <article class="panel-card">
+            <h2>Produits</h2>
+            @if (_products.Count == 0)
+            {
+                <p>Pas de produits disponibles pour ce store.</p>
+            }
+            else
+            {
+                <div class="list-stack">
+                    @foreach (var product in _products)
+                    {
+                        <div class="line-item">
+                            <div>
+                                <strong>@product.Name</strong>
+                                <div>@product.Price.ToString("0.00") EUR</div>
+                            </div>
+                            <div class="line-actions">
+                                <input class="qty-input" type="number" min="0" value="@GetQuantity(product.Id)" @onchange="(e => UpdateQuantity(product.Id, e))" />
+                                <button class="btn btn-accent" @onclick="() => AddToCart(product)">Ajouter</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </article>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public int StoreId { get; set; }
+
+    private bool _loading = true;
+    private string? _error;
+    private StoreDto? _store;
+    private List<ProductDto> _products = [];
+    private readonly Dictionary<int, int> _productQuantities = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _error = null;
+        _store = null;
+        _products = [];
+
+        var storesResult = await ApiClient.GetStoresAsync();
+        if (!storesResult.IsSuccess)
+        {
+            _error = storesResult.Error ?? "Impossible de charger les stores.";
+            _loading = false;
+            return;
+        }
+
+        _store = storesResult.Value?.FirstOrDefault(s => s.Id == StoreId);
+        if (_store is null)
+        {
+            _error = "Store introuvable.";
+            _loading = false;
+            return;
+        }
+
+        var productsResult = await ApiClient.GetStoreProductsAsync(StoreId);
+        if (!productsResult.IsSuccess)
+        {
+            _error = productsResult.Error ?? "Impossible de charger les produits.";
+            _loading = false;
+            return;
+        }
+
+        _products = productsResult.Value?.ToList() ?? [];
+        foreach (var product in _products)
+        {
+            if (!_productQuantities.ContainsKey(product.Id))
+            {
+                _productQuantities[product.Id] = 0;
+            }
+        }
+
+        _loading = false;
+    }
+
+    private int GetQuantity(int productId)
+    {
+        if (!_productQuantities.TryGetValue(productId, out var qty))
+        {
+            qty = 0;
+            _productQuantities[productId] = qty;
+        }
+
+        return qty;
+    }
+
+    private void UpdateQuantity(int productId, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var qty) || qty < 0)
+        {
+            qty = 0;
+        }
+
+        _productQuantities[productId] = qty;
+    }
+
+    private void AddToCart(ProductDto product)
+    {
+        var quantity = GetQuantity(product.Id);
+        if (quantity <= 0)
+        {
+            quantity = 1;
+        }
+
+        Cart.AddProduct(product, quantity);
+        _productQuantities[product.Id] = 0;
+    }
+}

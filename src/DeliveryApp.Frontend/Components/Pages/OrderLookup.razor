@@ -1,0 +1,39 @@
+@page "/orders"
+
+@inject NavigationManager Navigation
+@inject AppContextState Sim
+
+<PageTitle>Recherche commande</PageTitle>
+
+<h1>Recherche commande</h1>
+
+<section class="panel-card narrow-card">
+    <label class="field-label" for="orderId">OrderId</label>
+    <input id="orderId" class="form-input" type="number" min="1" @bind="_orderId" />
+
+    <button class="btn btn-accent" @onclick="GoToOrder">Ouvrir le suivi</button>
+    <a class="btn btn-muted" href="/orders/board">Board commandes</a>
+</section>
+
+@code {
+    private int _orderId = 1;
+
+    protected override void OnInitialized()
+    {
+        if (Sim.CurrentOrderId is > 0)
+        {
+            _orderId = Sim.CurrentOrderId.Value;
+        }
+    }
+
+    private void GoToOrder()
+    {
+        if (_orderId <= 0)
+        {
+            return;
+        }
+
+        Sim.SetOrder(_orderId);
+        Navigation.NavigateTo($"/orders/{_orderId}");
+    }
+}
