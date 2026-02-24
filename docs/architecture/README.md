@@ -11,6 +11,7 @@ This folder contains the recommended UML/C4 diagrams for the current DeliveryApp
 - `deliveryapp-sequence-assign-pay-review.puml`: sequence diagram for assign courier, payment and review flow.
 - `deliveryapp-order-state-machine.puml`: order lifecycle state machine.
 - `deliveryapp-data-model-erd.puml`: logical data model (ERD) of current SQL schema.
+- `architecture-document.fr.md`: architecture summary in French (frontend, backend layers, SQL Server, Cosmos target design, interactions).
 - `current-state.md`: current architecture state and transition note.
 - `modular-monolith-migration.md`: phased migration plan.
 

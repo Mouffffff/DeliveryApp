@@ -1,50 +1,64 @@
-# DeliveryApp - Scénario de Fonctionnement
+# DeliveryApp - Scenario de fonctionnement (API actuelle)
 
-Ce document décrit le flux complet d'une commande de livraison dans l'application DeliveryApp.
+Ce document decrit le flux complet d'une commande DeliveryApp avec les endpoints actuellement exposes par `DeliveryApp.Api`.
 
-## Architecture des Endpoints
+## 1. Styles d'endpoints
 
-L'API propose deux styles d'endpoints :
-1. **Endpoints Legacy** : Routes classiques dans `/api/*`
-2. **Endpoints Modules** : Nouvelles routes modulaires dans `/api/modules/*`
+L'API expose 2 familles de routes:
 
----
+1. Endpoints runtime principaux dans `/api/*`
+2. Endpoints de migration modulaire dans `/api/modules/*`
 
-## Scénario Complet d'une Commande
+Important:
+- Les routes `/api/modules/*` passent encore via des adapters relies aux services legacy.
+- Le moteur runtime principal reste les endpoints `/api/*`.
 
-### Phase 1 : Initialisation (Administration)
+## 2. Prerequis du scenario
 
-Ces étapes sont généralement effectuées par l'administrateur ou lors de la configuration initiale.
+1. API lancee sur `http://localhost:5000`
+2. Base SQL migree/seedee
+3. Comptes disponibles:
+- 1 `Admin`
+- 1 `Customer`
+- 1 `Courier`
 
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 1 | Créer un client | `/api/customers` | POST |
-| 2 | Créer une adresse de livraison | `/api/addresses` | POST |
-| 3 | Créer un magasin (restaurant/boutique) | `/api/stores` | POST |
-| 4 | Créer des produits pour le magasin | `/api/products` | POST |
-| 5 | Créer un livreur (courier) | `/api/couriers` | POST |
+## 3. Scenario nominal complet
 
-### Phase 2 : Consultation (Par le client)
+### Phase A - Authentification
 
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 6 | Liste des magasins disponibles | `/api/stores` | GET |
-| 7 | Produits d'un magasin spécifique | `/api/stores/{storeId}/products` | GET |
-| 8 | Liste des livreurs disponibles | `/api/couriers/available` | GET |
+| # | Action | Endpoint | Methode | Role |
+|---|---|---|---|---|
+| 1 | Creer un customer | `/api/auth/register/customer` | POST | Public |
+| 2 | Creer un courier | `/api/auth/register/courier` | POST | Public |
+| 3 | Login | `/api/auth/login` | POST | Public |
+| 4 | Lire son profil JWT | `/api/auth/me` | GET | Auth |
 
-### Phase 3 : Passation de Commande
+### Phase B - Initialisation catalogue (admin)
 
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 9 | Créer une nouvelle commande | `/api/orders` | POST |
+| # | Action | Endpoint | Methode | Role |
+|---|---|---|---|---|
+| 5 | Creer une adresse de store | `/api/addresses` | POST | AdminOnly |
+| 6 | Creer un store | `/api/stores` | POST | AdminOnly |
+| 7 | Creer des produits | `/api/products` | POST | AdminOnly |
 
-**Exemple de payload pour créer une commande :**
-```
-json
+### Phase C - Consultation et commande (customer)
+
+| # | Action | Endpoint | Methode | Role |
+|---|---|---|---|---|
+| 8 | Lister les stores | `/api/stores` | GET | Public |
+| 9 | Lire les produits d'un store | `/api/stores/{storeId}/products` | GET | Public |
+| 10 | Lister ses adresses | `/api/account/addresses` | GET | CustomerOnly |
+| 11 | Creer commande | `/api/orders` | POST | CustomerOnly |
+| 12 | Suivre ses commandes | `/api/orders/mine` | GET | Auth |
+| 13 | Detail commande | `/api/orders/{id}` | GET | Auth |
+
+Payload exemple pour `POST /api/orders`:
+
+```json
 {
-  "customerId": 1,
+  "customerId": 2,
   "storeId": 1,
-  "deliveryAddressId": 1,
+  "deliveryAddressId": 3,
   "items": [
     { "productId": 1, "quantity": 2 },
     { "productId": 3, "quantity": 1 }
@@ -52,153 +66,100 @@ json
 }
 ```
 
-### Phase 4 : Gestion de la Commande
+Note:
+- En role `Customer`, le backend force `customerId` depuis le token JWT.
 
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 10 | Le livreur s'affecte à la commande | `/api/orders/{orderId}/assign-courier` | PATCH |
-| 11 | Voir les détails d'une commande | `/api/orders/{id}` | GET |
-| 12 | Liste de toutes les commandes | `/api/orders` | GET |
-| 13 | Commandes par statut | `/api/orders/status/{status}` | GET |
+### Phase D - Dispatch (courier)
 
-### Phase 5 : Paiement
+| # | Action | Endpoint | Methode | Role |
+|---|---|---|---|---|
+| 14 | Voir commandes actives | `/api/orders` | GET | CourierOrAdmin |
+| 15 | S'affecter une commande | `/api/orders/{orderId}/assign-courier` | PATCH | CourierOnly |
+| 16 | Faire avancer le statut | `/api/orders/{id}` | PUT | CourierOnly |
 
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 14 | Créer un paiement pour la commande | `/api/orders/{orderId}/payments` | POST |
-| 15 | Voir les paiements d'une commande | `/api/orders/{orderId}/payments` | GET |
+Payload exemple pour `PATCH /api/orders/{orderId}/assign-courier`:
 
-### Phase 6 : Avis (Optionnel)
-
-| # | Action | Endpoint | Méthode |
-|---|--------|----------|---------|
-| 16 | Donner un avis sur la commande | `/api/orders/{orderId}/reviews` | POST |
-| 17 | Voir les avis d'une commande | `/api/orders/{orderId}/reviews` | GET |
-
----
-
-## Nouveaux Endpoints (Modules)
-
-Les modules offrent une approche plus structurée et moderne.
-
-### Catalog Module
-```
-GET /api/modules/catalog/stores                          - Liste des magasins
-GET /api/modules/catalog/stores/{storeId}/products       - Produits d'un magasin
+```json
+{
+  "courierId": 1
+}
 ```
 
-### Ordering Module
-```
-POST /api/modules/ordering/orders                        - Passer une commande
-GET  /api/modules/ordering/orders/{orderId}             - Détails d'une commande
-```
+Payload exemple pour `PUT /api/orders/{id}` (une etape):
 
-### Dispatch Module
-```
-PATCH /api/modules/dispatch/orders/{orderId}/couriers/{courierId}  - Assigner un livreur
-GET  /api/modules/dispatch/couriers/available            - Livreurs disponibles
+```json
+{
+  "status": 2,
+  "courierId": 1
+}
 ```
 
-### Payments Module
-```
-POST /api/modules/payments/pay                          - Paiement d'une commande
-GET  /api/modules/payments/orders/{orderId}             - Paiements d'une commande
-```
+### Phase E - Paiement et avis (customer)
 
----
+| # | Action | Endpoint | Methode | Role |
+|---|---|---|---|---|
+| 17 | Payer la commande | `/api/orders/{orderId}/payments` | POST | CustomerOnly |
+| 18 | Lire historique paiements | `/api/orders/{orderId}/payments` | GET | Auth |
+| 19 | Creer un avis | `/api/orders/{orderId}/reviews` | POST | CustomerOnly |
+| 20 | Lire avis | `/api/orders/{orderId}/reviews` | GET | Auth |
 
-## Statuts des Commandes (OrderStatus)
+## 4. Endpoints modules (migration progressive)
 
-Les statuts possibles d'une commande :
+Catalog:
 
-| Statut | Valeur | Description |
-|--------|--------|-------------|
-| Pending | 0 | Commande créée, en attente de traitement |
-| Accepted | 1 | Commande acceptée par le magasin |
-| Preparing | 2 | Le magasin prépare la commande |
-| Ready | 3 | Commande prête pour le ramassage |
-| PickedUp | 4 | Livreur a récupéré la commande |
-| Delivered | 5 | Commande livrée au client |
-| Cancelled | 6 | Commande annulée |
-
----
-
-## Statuts des Paiements (PaymentStatus)
-
-| Statut | Valeur | Description |
-|--------|--------|-------------|
-| Pending | 0 | Paiement en attente |
-| Completed | 1 | Paiement réussi |
-| Failed | 2 | Paiement échoué |
-| Refunded | 3 | Paiement remboursé |
-
----
-
-## Méthodes de Paiement (PaymentMethod)
-
-| Méthode | Description |
-|---------|-------------|
-| CreditCard | Carte de crédit |
-| DebitCard | Carte de débit |
-| Cash | Espèces |
-| DigitalWallet | Portefeuille digital |
-
----
-
-## Exemple de Flux Complet
-
-```
-1. Client s'inscrit
-   POST /api/customers
-   → { id: 1, name: "Jean Dupont" }
-
-2. Client ajoute son adresse
-   POST /api/addresses
-   → { id: 1, street: "123 Rue de la Paix", city: "Paris" }
-
-3. Admin crée un restaurant
-   POST /api/stores
-   → { id: 1, name: "Le Gourmet" }
-
-4. Admin ajoute des produits
-   POST /api/products
-   → { id: 1, name: "Burger", price: 12.99 }
-   → { id: 2, name: "Frites", price: 4.99 }
-
-5. Admin crée un livreur
-   POST /api/couriers
-   → { id: 1, name: "Marie Martin", vehicleType: "Bike" }
-
-6. Client consulte les restaurants
-   GET /api/stores
-   → [{ id: 1, name: "Le Gourmet" }]
-
-7. Client voit les produits
-   GET /api/stores/1/products
-   → [{ id: 1, name: "Burger", price: 12.99 }, ...]
-
-8. Client passe commande
-   POST /api/orders
-   → { id: 1, status: "Pending", totalPrice: 29.97 }
-
-9. Le livreur s'affecte la commande
-   PATCH /api/orders/1/assign-courier
-   → { id: 1, courierId: 1, status: "Accepted" }
-
-10. Client paie la commande
-    POST /api/orders/1/payments
-    → { id: 1, status: "Completed", amount: 29.97 }
-
-11. Client donne son avis
-    POST /api/orders/1/reviews
-    → { id: 1, rating: 5, comment: "Excellent service!" }
+```text
+GET /api/modules/catalog/stores
+GET /api/modules/catalog/stores/{storeId}/products
 ```
 
----
+Ordering:
 
-## Notes
+```text
+POST /api/modules/ordering/orders
+GET  /api/modules/ordering/orders/{orderId}
+```
 
-- Tous les endpoints retournent des codes HTTP standard (200, 201, 400, 404, 500)
-- Les endpoints POST et PUT/PATCH utilisent JSON pour les données
-- La base de données doit être种子ée (seed) avec des données de test
-- Le Swagger est disponible sur `/swagger/index.html` pour tester les endpoints
+Dispatch:
+
+```text
+PATCH /api/modules/dispatch/orders/{orderId}/couriers/{courierId}
+GET  /api/modules/dispatch/couriers/available
+```
+
+Payments:
+
+```text
+POST /api/modules/payments/pay
+GET  /api/modules/payments/orders/{orderId}
+```
+
+## 5. Statuts de commande (OrderStatus)
+
+| Valeur | Statut |
+|---|---|
+| 0 | Pending |
+| 1 | Accepted |
+| 2 | Preparing |
+| 3 | ReadyForPickup |
+| 4 | PickedUp |
+| 5 | OutForDelivery |
+| 6 | Delivered |
+| 7 | Cancelled |
+
+Regles:
+- progression pas a pas (`N -> N+1`)
+- `Cancelled` possible tant que la commande n'est pas deja fermee
+- une commande `Delivered` ou `Cancelled` ne peut plus etre modifiee
+
+## 6. Regles metier critiques
+
+- Tous les produits de la commande doivent appartenir au meme store.
+- Un courier indisponible ne peut pas etre affecte.
+- Un seul paiement `Completed` par commande.
+- Un avis seulement si la commande est `Delivered`, et un seul avis par commande.
+
+## 7. References
+
+- `docs/api/frontend-workflow.md`
+- `docs/api/usage-checklist.md`
+- `docs/architecture/architecture-document.fr.md`

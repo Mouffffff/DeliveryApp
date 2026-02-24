@@ -87,10 +87,13 @@ Courier:
 
 ```json
 {
-  "status": 6,
+  "status": 2,
   "courierId": 1
 }
 ```
+
+Note:
+- order status must progress step by step (`N -> N+1`), so reaching `Delivered` requires multiple update calls.
 
 ## 7. Customer pays and adds review
 Payment:

@@ -15,7 +15,7 @@ rectangle "DeliveryApp Platform" as DeliveryApp {
   usecase "Monitor operations and incidents" as UC4
 }
 
-database "Azure SQL Database" as AzureSql
+database "SQL Server (DeliveryAppDb)" as SqlServer
 cloud "Payment Provider\n(Future Integration)" as PaymentProvider
 
 Customer --> UC1
@@ -23,7 +23,7 @@ Courier --> UC2
 StoreManager --> UC3
 Admin --> UC4
 
-DeliveryApp --> AzureSql : read/write data
+DeliveryApp --> SqlServer : read/write data
 DeliveryApp --> PaymentProvider : payment authorization
 
 @enduml

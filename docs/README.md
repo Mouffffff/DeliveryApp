@@ -386,6 +386,7 @@ Codes frequents:
 
 - des projets modules existent mais la logique coeur reste majoritairement dans les services legacy
 - `Modules.Identity` n'est pas encore le moteur auth runtime
+- Cosmos DB n'est pas implemente dans le runtime actuel (voir `docs/architecture/architecture-document.fr.md`)
 - pas de suite de tests automatises dans le repo (integration/e2e a ajouter)
 - secrets de dev visibles dans `appsettings*.json`: a externaliser avant prod
 
@@ -397,6 +398,7 @@ Codes frequents:
 - `docs/api/workflow-scenario.md`
 - `docs/api/usage-checklist.md`
 - `docs/architecture/README.md`
+- `docs/architecture/architecture-document.fr.md`
 - `docs/architecture/current-state.md`
 - `docs/architecture/modular-monolith-migration.md`
 - diagrammes PlantUML dans `docs/architecture/*.puml`

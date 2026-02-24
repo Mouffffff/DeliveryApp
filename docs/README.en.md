@@ -386,6 +386,7 @@ Common HTTP codes:
 
 - module projects exist, but core runtime logic still mostly lives in legacy services
 - `Modules.Identity` is not yet the runtime auth engine
+- Cosmos DB is not implemented in the current runtime (see `docs/architecture/architecture-document.fr.md`)
 - no automated test suite in repository yet (integration/e2e to add)
 - dev secrets are visible in `appsettings*.json`: externalize before production
 
@@ -397,6 +398,7 @@ Common HTTP codes:
 - `docs/api/workflow-scenario.md`
 - `docs/api/usage-checklist.md`
 - `docs/architecture/README.md`
+- `docs/architecture/architecture-document.fr.md`
 - `docs/architecture/current-state.md`
 - `docs/architecture/modular-monolith-migration.md`
 - PlantUML diagrams in `docs/architecture/*.puml`

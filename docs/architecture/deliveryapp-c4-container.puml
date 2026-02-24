@@ -10,7 +10,7 @@ rectangle "DeliveryApp System" {
   rectangle "Application Services\n(Order/Catalog/Customer/Courier/Payment/Review)" as Service
   rectangle "DeliveryApp.Application\n(Contracts, DTOs, Interfaces)" as Application
   rectangle "DeliveryApp.Infrastructure\n(EF Core + Specialized Repositories)" as Infrastructure
-  database "Azure SQL Database" as SqlDb
+  database "SQL Server (DeliveryAppDb)" as SqlDb
 }
 
 User --> Api : HTTPS JSON

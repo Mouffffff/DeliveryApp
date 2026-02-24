@@ -17,6 +17,12 @@ Depuis cette version, le front fonctionne en mode role-based avec JWT:
 - `Courier`: board commandes + suivi
 - `Admin`: gestion stores + moderation comptes + supervision
 
+## 1.1 Contexte architecture
+
+- Runtime actuel: Frontend Blazor Server + API .NET + SQL Server.
+- Cosmos DB: non implemente dans le projet actuel.
+- Reference architecture globale: `docs/architecture/architecture-document.fr.md`.
+
 ## 2. Perimetre fonctionnel
 
 Perimetre inclus:
@@ -126,10 +132,13 @@ Scenario:
 
 ```json
 {
-  "status": 6,
+  "status": 2,
   "courierId": 1
 }
 ```
+
+Note:
+- pour atteindre `Delivered`, le front doit enchaîner plusieurs mises a jour de statut (progression `N -> N+1`).
 
 ### 6.4 Payer la commande
 
