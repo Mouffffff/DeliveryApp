@@ -139,6 +139,10 @@ Default local URL:
 
 - Frontend: `http://localhost:5105`
 
+## Project Demonstration (YouTube)
+
+- [Project Demonstration on YouTube](https://youtu.be/WZrxehRaHxA)
+
 ## Additional Documentation
 
 - `docs/README.md`
